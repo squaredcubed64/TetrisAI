@@ -116,6 +116,12 @@ class PieceType(Enum):
         self.up_body = up_body
         self.wall_kicks = wall_kicks
 
+    def __str__(self) -> str:
+        if self == PieceType.EMPTY:
+            return "."
+        else:
+            return self.name
+
 class Piece:
     def __init__(self, type: PieceType, top_left: Tuple[int, int], rotation: Rotation = Rotation.ZERO):
         self.type = type
@@ -180,93 +186,6 @@ class Action(Enum):
     ROTATE_CLOCKWISE = auto()
     ROTATE_COUNTERCLOCKWISE = auto()
     DROP = auto()
-
-def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], non_terminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
-    if piece in non_terminal_piece_to_path:
-        return
-    non_terminal_piece_to_path[piece] = path
-
-    for action in [Action.DO_NOTHING, Action.MOVE_LEFT, Action.MOVE_RIGHT, Action.ROTATE_CLOCKWISE, Action.ROTATE_COUNTERCLOCKWISE]:
-        if action == Action.DO_NOTHING:
-            new_piece = Piece(piece.type, piece.top_left, piece.rotation)
-        elif action == Action.MOVE_LEFT:
-            new_piece = Piece(piece.type, (piece.top_left[0] - 1, piece.top_left[1]), piece.rotation)
-            if new_piece.is_colliding_or_out_of_bounds(stack):
-                new_piece.move((1, 0))
-        elif action == Action.MOVE_RIGHT:
-            new_piece = Piece(piece.type, (piece.top_left[0] + 1, piece.top_left[1]), piece.rotation)
-            if new_piece.is_colliding_or_out_of_bounds(stack):
-                new_piece.move((-1, 0))
-        elif action == Action.ROTATE_COUNTERCLOCKWISE:
-            new_piece = Piece(piece.type, piece.top_left, piece.rotation.counterclockwise())
-
-            rotation_successful = False
-            for offset in new_piece.type.wall_kicks[new_piece.rotation.clockwise()][new_piece.rotation]:
-                new_piece.move(offset)
-                if not new_piece.is_colliding_or_out_of_bounds(stack):
-                    rotation_successful = True
-                    break
-                new_piece.move((-offset[0], -offset[1]))
-
-            if not rotation_successful:
-                new_piece.rotate_clockwise()
-        elif action == Action.ROTATE_CLOCKWISE:
-            new_piece = Piece(piece.type, piece.top_left, piece.rotation.clockwise())
-
-            rotation_successful = False
-            for offset in new_piece.type.wall_kicks[new_piece.rotation.counterclockwise()][new_piece.rotation]:
-                new_piece.move(offset)
-                if not new_piece.is_colliding_or_out_of_bounds(stack):
-                    rotation_successful = True
-                    break
-                new_piece.move((-offset[0], -offset[1]))
-
-            if not rotation_successful:
-                new_piece.rotate_counterclockwise()
-
-        # Forced DROP in between each action
-        new_piece.move((0, 1))
-        new_path = path + [action, Action.DROP]
-        if new_piece.is_colliding_or_out_of_bounds(stack):
-            new_piece.move((0, -1))
-            terminal_piece_to_path[new_piece] = new_path
-        else:
-            include_pieces_and_paths_dfs(new_piece, new_path, stack, terminal_piece_to_path, non_terminal_piece_to_path)
-
-def calculate_results_and_paths(initial_stack: List[List[PieceType]], initial_piece) -> List[Tuple[List[List[PieceType]], List[Action]]]:
-    terminal_piece_to_path = {}
-    non_terminal_piece_to_path = {}
-    include_pieces_and_paths_dfs(initial_piece, [], initial_stack, terminal_piece_to_path, non_terminal_piece_to_path)
-
-    results_and_paths = []
-    for terminal_piece, path in terminal_piece_to_path.items():
-        stack_copy = copy.deepcopy(initial_stack)
-        terminal_piece.place_on_stack(stack_copy)
-        results_and_paths.append((stack_copy, path))
-    
-    return results_and_paths
-
-def num_holes(stack: List[List[PieceType]]) -> int:
-    holes = 0
-    for x in range(BOARD_WIDTH_CELLS):
-        hole_found = False
-        for y in range(BOARD_HEIGHT_CELLS):
-            if stack[y][x] != PieceType.EMPTY:
-                hole_found = True
-            elif hole_found:
-                holes += 1
-    return holes
-
-def evaluate_stack(stack: List[List[PieceType]]) -> float:
-    holes = 0
-    for x in range(BOARD_WIDTH_CELLS):
-        hole_found = False
-        for y in range(BOARD_HEIGHT_CELLS):
-            if stack[y][x] != PieceType.EMPTY:
-                hole_found = True
-            elif hole_found:
-                holes += 1
-    return holes
 
 main_stack = [[PieceType.EMPTY for _ in range(BOARD_WIDTH_CELLS)] for _ in range(BOARD_HEIGHT_CELLS)]
 current_piece = None
