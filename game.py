@@ -194,7 +194,6 @@ frames_since_last_drop = 0
 frames_since_last_action = 0
 rows_cleared = 0
 
-running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:

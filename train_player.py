@@ -1,6 +1,8 @@
 import copy
 from typing import Dict, List, Tuple
-from tetris import BOARD_HEIGHT_CELLS, BOARD_WIDTH_CELLS, Action, Piece, PieceType
+from game import BOARD_HEIGHT_CELLS, BOARD_WIDTH_CELLS, Action, Piece, PieceType
+
+NUM_EPISODES = 2048
 
 def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], non_terminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
     if piece in non_terminal_piece_to_path:
@@ -84,36 +86,25 @@ def calculate_results_and_paths(initial_stack: List[List[PieceType]], initial_pi
 
     return results_and_paths
 
-def print_stack(stack: List[List[PieceType]]) -> None:
+def debug_print_stack(stack: List[List[PieceType]]) -> None:
     for row in stack:
         for cell in row:
             print(cell, end='')
         print()
 
-results_and_paths = calculate_results_and_paths([[PieceType.EMPTY for _ in range(BOARD_WIDTH_CELLS)] for _ in range(BOARD_HEIGHT_CELLS)], Piece(PieceType.I, (0, 0)))
-for stack, path in results_and_paths:
-    print_stack(stack)
-    print(path)
-    print()
+# results_and_paths = calculate_results_and_paths([[PieceType.EMPTY for _ in range(BOARD_WIDTH_CELLS)] for _ in range(BOARD_HEIGHT_CELLS)], Piece(PieceType.I, (0, 0)))
+# for stack, path in results_and_paths:
+#     print_stack(stack)
+#     print(path)
+#     print()
 
-def num_holes(stack: List[List[PieceType]]) -> int:
-    holes = 0
-    for x in range(BOARD_WIDTH_CELLS):
-        hole_found = False
-        for y in range(BOARD_HEIGHT_CELLS):
-            if stack[y][x] != PieceType.EMPTY:
-                hole_found = True
-            elif hole_found:
-                holes += 1
-    return holes
-
-def evaluate_stack(stack: List[List[PieceType]]) -> float:
-    holes = 0
-    for x in range(BOARD_WIDTH_CELLS):
-        hole_found = False
-        for y in range(BOARD_HEIGHT_CELLS):
-            if stack[y][x] != PieceType.EMPTY:
-                hole_found = True
-            elif hole_found:
-                holes += 1
-    return holes
+# def num_holes(stack: List[List[PieceType]]) -> int:
+#     holes = 0
+#     for x in range(BOARD_WIDTH_CELLS):
+#         hole_found = False
+#         for y in range(BOARD_HEIGHT_CELLS):
+#             if stack[y][x] != PieceType.EMPTY:
+#                 hole_found = True
+#             elif hole_found:
+#                 holes += 1
+#     return holes
