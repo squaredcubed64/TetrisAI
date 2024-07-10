@@ -5,7 +5,7 @@ from game import Game, Piece, PieceType
 from player import Player
 
 model_load_path = None
-model_save_path = "dense.keras"
+model_save_path = "linear_regression.keras"
 NUM_EPISODES = 8192
 EPISODES_BETWEEN_SAVES = 128
 player = Player("dense")

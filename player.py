@@ -6,8 +6,8 @@ from game import Game, PieceType
 
 class Player:
     def __init__(self, architecture: str) -> None:
-        self.BATCH_SIZE = 512
-        self.REPLAY_START = 2048
+        self.BATCH_SIZE = 8
+        self.REPLAY_START = 32
         self.DISCOUNT_FACTOR = 0.96
         self.NUM_EPOCHS = 1
         self.NUM_FEATURES_IN_DENSE_MODEL = 4
@@ -35,10 +35,12 @@ class Player:
                 layers.Dense(1)
             ])
         elif architecture == "dense":
+            layers.Dense(64, input_dim=self.NUM_FEATURES_IN_DENSE_MODEL, activation='relu'),
+            layers.Dense(64, activation='relu'),
+            layers.Dense(1, activation='linear')
+        elif architecture == "linear_regression":
             self.model = models.Sequential([
-                layers.Dense(64, input_dim=self.NUM_FEATURES_IN_DENSE_MODEL, activation='relu'),
-                layers.Dense(64, activation='relu'),
-                layers.Dense(1, activation='linear')
+                layers.Dense(1, input_dim=self.NUM_FEATURES_IN_DENSE_MODEL, activation='linear'),
             ])
         self.model.compile(optimizer='adam', loss='mean_squared_error')
 
@@ -98,7 +100,7 @@ class Player:
             if self.architecture == "cnn":
                 binary_grid = self.convert_stack_to_binary_grid(state)
                 value = self.model.predict(np.reshape(binary_grid, (1, Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1)), verbose=0)[0][0]
-            elif self.architecture == "dense":
+            elif self.architecture == "dense" or self.architecture == "linear_regression":
                 value = self.model.predict(np.reshape(self.get_features(state), (1, self.NUM_FEATURES_IN_DENSE_MODEL)), verbose=0)[0][0]
 
             if best_value is None or value > best_value:
@@ -127,7 +129,7 @@ class Player:
         if self.architecture == "cnn":
             nonterminal_next_states = np.reshape([next_state for _, next_state, _  in batch_without_terminal_transitions],
                                                  (len(batch_without_terminal_transitions), Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1))
-        elif self.architecture == "dense":
+        elif self.architecture == "dense" | self.architecture == "linear_regression":
             nonterminal_next_states = np.array([self.get_features(next_state) for _, next_state, _ in batch_without_terminal_transitions])
         nonterminal_next_q_values = np.array([s[0] for s in self.model.predict(nonterminal_next_states, verbose=0)])
     
@@ -151,7 +153,7 @@ class Player:
 
         if self.architecture == "cnn":
             self.model.fit(np.reshape(x, (self.BATCH_SIZE, Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1)), np.array(y), epochs=self.NUM_EPOCHS, verbose=0)
-        elif self.architecture == "dense":
+        elif self.architecture == "dense" | self.architecture == "linear_regression":
             self.model.fit(np.array([self.get_features(state) for state in x]), np.array(y), epochs=self.NUM_EPOCHS, verbose=0)
     
     def update_epsilon(self, episode_number: int) -> None:
