@@ -1,6 +1,6 @@
 import random
 from typing import List, Tuple
-from keras import layers, models
+from keras import layers, models, initializers
 import numpy as np
 from game import Game, PieceType
 
@@ -10,7 +10,7 @@ class Player:
         self.REPLAY_START = 32
         self.DISCOUNT_FACTOR = 0.96
         self.NUM_EPOCHS = 1
-        self.NUM_FEATURES_IN_DENSE_MODEL = 4
+        self.NUM_FEATURES = 4
 
         self.epsilon = 1.0
         self.EPSILON_MIN = 0.005
@@ -36,13 +36,15 @@ class Player:
             ])
         elif architecture == "dense":
             self.model = models.Sequential([
-                layers.Dense(64, input_dim=self.NUM_FEATURES_IN_DENSE_MODEL, activation='relu'),
+                layers.Dense(64, input_dim=self.NUM_FEATURES, activation='relu'),
                 layers.Dense(64, activation='relu'),
                 layers.Dense(1, activation='linear')
             ])
         elif architecture == "linear_regression":
+            initial_weights = [.1, 0, -.1, -2]
+            weight_initializer = initializers.Constant(value=initial_weights)
             self.model = models.Sequential([
-                layers.Dense(1, input_dim=self.NUM_FEATURES_IN_DENSE_MODEL, activation='linear'),
+                layers.Dense(1, input_dim=self.NUM_FEATURES, activation='linear', kernel_initializer=weight_initializer, bias_initializer='zeros'),
             ])
         self.model.compile(optimizer='adam', loss='mean_squared_error')
 
@@ -59,39 +61,39 @@ class Player:
         # if self.architecture == "dense":
         #     self.memory_dense.append(self.get_features(state))
 
-    def get_height(self, stack: List[List[PieceType]], x: int) -> int:
+    def get_height(self, stack: List[List[int]], x: int) -> int:
         for y in range(Game.BOARD_HEIGHT_CELLS):
-            if stack[y][x] != PieceType.EMPTY:
+            if stack[y][x] == 1:
                 return Game.BOARD_HEIGHT_CELLS - y
         return 0
 
-    def get_max_height(self, stack: List[List[PieceType]]) -> int:
+    def get_max_height(self, stack: List[List[int]]) -> int:
         return max([self.get_height(stack, x) for x in range(Game.BOARD_WIDTH_CELLS)])
 
-    def get_full_rows(self, stack: List[List[PieceType]]) -> int:
+    def get_full_rows(self, stack: List[List[int]]) -> int:
         full_rows = 0
         for y in range(Game.BOARD_HEIGHT_CELLS):
-            if all(cell != PieceType.EMPTY for cell in stack[y]):
+            if all(cell == 1 for cell in stack[y]):
                 full_rows += 1
         return full_rows
         
-    def get_bumpiness(self, stack: List[List[PieceType]]) -> int:
+    def get_bumpiness(self, stack: List[List[int]]) -> int:
         heights = [self.get_height(stack, x) for x in range(Game.BOARD_WIDTH_CELLS)]
         return sum([(heights[i] - heights[i + 1]) ** 2 for i in range(Game.BOARD_WIDTH_CELLS - 1)])
     
     # Returns the number of empty cells trapped underneath a filled cell
-    def get_holes(self, stack: List[List[PieceType]]) -> int:
+    def get_holes(self, stack: List[List[int]]) -> int:
         holes = 0
         for x in range(Game.BOARD_WIDTH_CELLS):
             filled_cell_found = False
             for y in range(Game.BOARD_HEIGHT_CELLS):
-                if stack[y][x] != PieceType.EMPTY:
+                if stack[y][x] == 1:
                     filled_cell_found = True
                 elif filled_cell_found:
                     holes += 1
         return holes
     
-    def get_features(self, stack: List[List[PieceType]]) -> Tuple[int, int, int, int]:
+    def get_features(self, stack: List[List[int]]) -> Tuple[int, int, int, int]:
         return (self.get_max_height(stack), self.get_full_rows(stack), self.get_bumpiness(stack), self.get_holes(stack))
 
     def get_best_state(self, states: List[List[List[PieceType]]]) -> List[List[PieceType]]:
@@ -99,11 +101,11 @@ class Player:
         best_value = None
 
         for state in states:
+            binary_grid = self.convert_stack_to_binary_grid(state)
             if self.architecture == "cnn":
-                binary_grid = self.convert_stack_to_binary_grid(state)
                 value = self.model.predict(np.reshape(binary_grid, (1, Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1)), verbose=0)[0][0]
             elif self.architecture == "dense" or self.architecture == "linear_regression":
-                value = self.model.predict(np.reshape(self.get_features(state), (1, self.NUM_FEATURES_IN_DENSE_MODEL)), verbose=0)[0][0]
+                value = self.model.predict(np.reshape(self.get_features(binary_grid), (1, self.NUM_FEATURES)), verbose=0)[0][0]
 
             if best_value is None or value > best_value:
                 best_state = state
