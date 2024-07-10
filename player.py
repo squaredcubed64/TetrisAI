@@ -35,9 +35,11 @@ class Player:
                 layers.Dense(1)
             ])
         elif architecture == "dense":
-            layers.Dense(64, input_dim=self.NUM_FEATURES_IN_DENSE_MODEL, activation='relu'),
-            layers.Dense(64, activation='relu'),
-            layers.Dense(1, activation='linear')
+            self.model = models.Sequential([
+                layers.Dense(64, input_dim=self.NUM_FEATURES_IN_DENSE_MODEL, activation='relu'),
+                layers.Dense(64, activation='relu'),
+                layers.Dense(1, activation='linear')
+            ])
         elif architecture == "linear_regression":
             self.model = models.Sequential([
                 layers.Dense(1, input_dim=self.NUM_FEATURES_IN_DENSE_MODEL, activation='linear'),
@@ -129,7 +131,7 @@ class Player:
         if self.architecture == "cnn":
             nonterminal_next_states = np.reshape([next_state for _, next_state, _  in batch_without_terminal_transitions],
                                                  (len(batch_without_terminal_transitions), Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1))
-        elif self.architecture == "dense" | self.architecture == "linear_regression":
+        elif self.architecture == "dense" or self.architecture == "linear_regression":
             nonterminal_next_states = np.array([self.get_features(next_state) for _, next_state, _ in batch_without_terminal_transitions])
         nonterminal_next_q_values = np.array([s[0] for s in self.model.predict(nonterminal_next_states, verbose=0)])
     
@@ -153,7 +155,7 @@ class Player:
 
         if self.architecture == "cnn":
             self.model.fit(np.reshape(x, (self.BATCH_SIZE, Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1)), np.array(y), epochs=self.NUM_EPOCHS, verbose=0)
-        elif self.architecture == "dense" | self.architecture == "linear_regression":
+        elif self.architecture == "dense" or self.architecture == "linear_regression":
             self.model.fit(np.array([self.get_features(state) for state in x]), np.array(y), epochs=self.NUM_EPOCHS, verbose=0)
     
     def update_epsilon(self, episode_number: int) -> None:

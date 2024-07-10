@@ -8,7 +8,7 @@ model_load_path = None
 model_save_path = "linear_regression.keras"
 NUM_EPISODES = 8192
 EPISODES_BETWEEN_SAVES = 128
-player = Player("dense")
+player = Player("linear_regression")
 
 def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], nonterminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
     if piece in nonterminal_piece_to_path:
