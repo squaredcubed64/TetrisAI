@@ -1,8 +1,11 @@
 import copy
 from typing import Dict, List, Tuple
-from game import BOARD_HEIGHT_CELLS, BOARD_WIDTH_CELLS, Action, Piece, PieceType
+from action import Action
+from game import Game, Piece, PieceType
+from player import Player
 
 NUM_EPISODES = 2048
+player = Player()
 
 def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], non_terminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
     if piece in non_terminal_piece_to_path:
@@ -52,7 +55,8 @@ def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[L
         new_path = path + [action, Action.DROP]
         if new_piece.is_colliding_or_out_of_bounds(stack):
             new_piece.move((0, -1))
-            terminal_piece_to_path[new_piece] = new_path
+            if not new_piece.is_colliding_or_out_of_bounds(stack):
+                terminal_piece_to_path[new_piece] = new_path
         else:
             include_pieces_and_paths_dfs(new_piece, new_path, stack, terminal_piece_to_path, non_terminal_piece_to_path)
 
@@ -86,11 +90,33 @@ def calculate_results_and_paths(initial_stack: List[List[PieceType]], initial_pi
 
     return results_and_paths
 
-def debug_print_stack(stack: List[List[PieceType]]) -> None:
-    for row in stack:
-        for cell in row:
-            print(cell, end='')
-        print()
+for episode_number in range(NUM_EPISODES):
+    game = Game()
+    print("Episode", episode_number + 1, "of", NUM_EPISODES)
+    total_rows_cleared = 0
+
+    while True:
+        initial_stack = copy.deepcopy(game.stack)
+        results_and_paths = calculate_results_and_paths(game.stack, game.current_piece)
+        if results_and_paths == []:
+            player.memory_append(initial_stack, None, 0, True)
+            break
+
+        best_stack = player.choose_state([stack for stack, _ in results_and_paths])
+        rows_cleared = game.update_stack_and_return_rows_cleared(best_stack)
+        total_rows_cleared += rows_cleared
+        new_stack = copy.deepcopy(game.stack)
+        player.memory_append(initial_stack, new_stack, rows_cleared, False)
+    
+    print("Rows cleared:", total_rows_cleared)
+    player.try_to_fit_on_memory()
+    player.try_to_decay_epsilon()
+
+# def debug_print_stack(stack: List[List[PieceType]]) -> None:
+#     for row in stack:
+#         for cell in row:
+#             print(cell, end='')
+#         print()
 
 # results_and_paths = calculate_results_and_paths([[PieceType.EMPTY for _ in range(BOARD_WIDTH_CELLS)] for _ in range(BOARD_HEIGHT_CELLS)], Piece(PieceType.I, (0, 0)))
 # for stack, path in results_and_paths:
