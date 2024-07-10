@@ -125,10 +125,10 @@ class Player:
         batch_without_terminal_transitions = list(filter(lambda transition : transition[1] is not None, batch))
 
         if self.architecture == "cnn":
-            nonterminal_next_states = np.reshape([next_state for _, next_state, _, _  in batch_without_terminal_transitions],
+            nonterminal_next_states = np.reshape([next_state for _, next_state, _  in batch_without_terminal_transitions],
                                                  (len(batch_without_terminal_transitions), Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1))
         elif self.architecture == "dense":
-            nonterminal_next_states = np.array([self.get_features(next_state) for _, next_state, _, _ in batch_without_terminal_transitions])
+            nonterminal_next_states = np.array([self.get_features(next_state) for _, next_state, _ in batch_without_terminal_transitions])
         nonterminal_next_q_values = np.array([s[0] for s in self.model.predict(nonterminal_next_states, verbose=0)])
     
         next_q_values = []
@@ -143,7 +143,7 @@ class Player:
         x = []
         y = []
 
-        for i, (state, _, reward, _) in enumerate(batch):
+        for i, (state, _, reward) in enumerate(batch):
             q_value = reward + self.DISCOUNT_FACTOR * next_q_values[i]
 
             x.append(state)
