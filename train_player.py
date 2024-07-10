@@ -26,19 +26,6 @@ def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[L
             new_piece = Piece(piece.type, (piece.top_left[0] + 1, piece.top_left[1]), piece.rotation)
             if new_piece.is_colliding_or_out_of_bounds(stack):
                 new_piece.move((-1, 0))
-        elif action == Action.ROTATE_COUNTERCLOCKWISE:
-            new_piece = Piece(piece.type, piece.top_left, piece.rotation.counterclockwise())
-
-            rotation_successful = False
-            for offset in new_piece.type.wall_kicks[new_piece.rotation.clockwise()][new_piece.rotation]:
-                new_piece.move(offset)
-                if not new_piece.is_colliding_or_out_of_bounds(stack):
-                    rotation_successful = True
-                    break
-                new_piece.move((-offset[0], -offset[1]))
-
-            if not rotation_successful:
-                new_piece.rotate_clockwise()
         elif action == Action.ROTATE_CLOCKWISE:
             new_piece = Piece(piece.type, piece.top_left, piece.rotation.clockwise())
 
@@ -52,6 +39,20 @@ def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[L
 
             if not rotation_successful:
                 new_piece.rotate_counterclockwise()
+        elif action == Action.ROTATE_COUNTERCLOCKWISE:
+            new_piece = Piece(piece.type, piece.top_left, piece.rotation.counterclockwise())
+
+            rotation_successful = False
+            for offset in new_piece.type.wall_kicks[new_piece.rotation.clockwise()][new_piece.rotation]:
+                new_piece.move(offset)
+                if not new_piece.is_colliding_or_out_of_bounds(stack):
+                    rotation_successful = True
+                    break
+                new_piece.move((-offset[0], -offset[1]))
+
+            if not rotation_successful:
+                new_piece.rotate_clockwise()
+
 
         # Forced DROP in between each action
         new_piece.move((0, 1))
@@ -106,14 +107,14 @@ for episode_number in range(NUM_EPISODES):
         initial_stack = copy.deepcopy(game.stack)
         results_and_paths = calculate_results_and_paths(game.stack, game.current_piece)
         if results_and_paths == []:
-            player.memory_append(initial_stack, None, 0, True)
+            player.memorize(initial_stack, None, 0, True)
             break
 
         best_stack = player.choose_state([stack for stack, _ in results_and_paths])
         rows_cleared = game.update_stack_and_return_rows_cleared(best_stack)
         total_rows_cleared += rows_cleared
         new_stack = copy.deepcopy(game.stack)
-        player.memory_append(initial_stack, new_stack, rows_cleared, False)
+        player.memorize(initial_stack, new_stack, rows_cleared, False)
     
     print("Rows cleared:", total_rows_cleared)
     player.try_to_fit_on_memory()
