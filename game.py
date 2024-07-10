@@ -18,6 +18,7 @@ class Game:
         self.stack = [[PieceType.EMPTY for _ in range(self.BOARD_WIDTH_CELLS)] for _ in range(self.BOARD_HEIGHT_CELLS)]
         self.current_piece = None
         self.next_piece_types = [random.choice([PieceType.I, PieceType.J, PieceType.L, PieceType.O, PieceType.S, PieceType.Z, PieceType.T]) for _ in range(5)]
+        self.spawn_piece()
 
     def clear_rows_and_return_rows_cleared(self) -> int:
         rows_to_clear = []

@@ -6,8 +6,10 @@ from game import Game, PieceType
 
 class Player:
     def __init__(self) -> None:
-        self.BATCH_SIZE = 512
-        self.REPLAY_START = 2048
+        # TODO change to 512
+        self.BATCH_SIZE = 32
+        # TODO change to 2048
+        self.REPLAY_START = 64
         self.DISCOUNT_FACTOR = 0.96
         self.NUM_EPOCHS = 1
 
@@ -34,8 +36,12 @@ class Player:
     def convert_stack_to_binary_grid(self, state: List[List[PieceType]]) -> List[List[int]]:
         return [[1 if cell != PieceType.EMPTY else 0 for cell in row] for row in state]
 
-    def memory_append(self, state: List[List[PieceType]], next_state: List[List[PieceType]], reward: float, terminal: bool) -> None:
-        self.memory.append((self.convert_stack_to_binary_grid(state), self.convert_stack_to_binary_grid(next_state), reward, terminal))
+    def memory_append(self, state: List[List[PieceType]], next_state: List[List[PieceType]] | None, reward: float, terminal: bool) -> None:
+        if next_state is None:
+            next_state_as_binary_grid = None
+        else:
+            next_state_as_binary_grid = self.convert_stack_to_binary_grid(next_state)
+        self.memory.append((self.convert_stack_to_binary_grid(state), next_state_as_binary_grid, reward, terminal))
 
     def get_best_state(self, states: List[List[List[PieceType]]]) -> List[List[PieceType]]:
         best_state = None
@@ -43,7 +49,7 @@ class Player:
 
         for state in states:
             binary_grid = self.convert_stack_to_binary_grid(state)
-            value = self.model.predict(np.reshape(binary_grid, (1, Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1)))[0][0]
+            value = self.model.predict(np.reshape(binary_grid, (1, Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1)), verbose=0)[0][0]
 
             if best_value is None or value > best_value:
                 best_state = state
@@ -58,13 +64,27 @@ class Player:
             return self.get_best_state(states)
         
     def try_to_fit_on_memory(self) -> None:
-        if len(self.memory) < self.BATCH_SIZE:
-            raise ValueError("Not enough samples in memory to fit the model.")
+        if len(self.memory) < self.REPLAY_START:
+            print("Not enough samples in memory to fit the model. Skipping training.")
+            return
+        else:
+            print("Fitting to memory")
 
         batch = random.sample(self.memory, self.BATCH_SIZE)
 
-        next_states = np.reshape([next_state for _, next_state, _, _ in batch], (self.BATCH_SIZE, Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1))
-        next_q_values = np.array([s[0] for s in self.model.predict(next_states)])
+        batch_without_terminal_transitions = list(filter(lambda transition : transition[1] is not None, batch))
+        nonterminal_next_states = np.reshape([next_state for _, next_state, _, _  in batch_without_terminal_transitions], 
+                                             (len(batch_without_terminal_transitions), Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1))
+        nonterminal_next_q_values = np.array([s[0] for s in self.model.predict(nonterminal_next_states, verbose=0)])
+    
+        next_q_values = []
+        nonterminal_index = 0
+        for step_number in range(self.BATCH_SIZE):
+            if batch[step_number][1] is None:
+                next_q_values.append(0)
+            else:
+                next_q_values.append(nonterminal_next_q_values[nonterminal_index])
+                nonterminal_index += 1
 
         x = []
         y = []

@@ -1,5 +1,5 @@
 from typing import List, Set, Tuple
-from game import Game, PieceType
+from piece_type import PieceType
 from rotation import Rotation
 
 class Piece:
@@ -33,9 +33,9 @@ class Piece:
             cells_relative_to_top_left = Piece.rotate_body_clockwise(Piece.rotate_body_clockwise(Piece.rotate_body_clockwise(self.type.up_body, self.type.bounding_box_size), self.type.bounding_box_size), self.type.bounding_box_size)
         return {(x + self.top_left[0], y + self.top_left[1]) for x, y in cells_relative_to_top_left}
     
-    def is_out_of_bounds(self) -> bool:
+    def is_out_of_bounds(self, board_width: int, board_height: int) -> bool:
         for x, y in self.get_cells():
-            if x < 0 or x >= Game.BOARD_WIDTH_CELLS or y < 0 or y >= Game.BOARD_HEIGHT_CELLS:
+            if x < 0 or x >= board_width or y < 0 or y >= board_height:
                 return True
         return False
 
@@ -47,7 +47,7 @@ class Piece:
         return False
     
     def is_colliding_or_out_of_bounds(self, stack: List[List[PieceType]]) -> bool:
-        return self.is_out_of_bounds() or self.is_colliding_with_stack(stack)
+        return self.is_out_of_bounds(len(stack[0]), len(stack)) or self.is_colliding_with_stack(stack)
     
     def place_on_stack(self, stack: List[List[PieceType]]) -> None:
         for x, y in self.get_cells():
