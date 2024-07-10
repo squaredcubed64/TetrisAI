@@ -6,17 +6,14 @@ from game import Game, PieceType
 
 class Player:
     def __init__(self) -> None:
-        # TODO change to 512
-        self.BATCH_SIZE = 32
-        # TODO change to 2048
-        self.REPLAY_START = 64
+        self.BATCH_SIZE = 512
+        self.REPLAY_START = 2048
         self.DISCOUNT_FACTOR = 0.96
         self.NUM_EPOCHS = 1
 
-        self.EPSILON = 1.0
+        self.epsilon = 1.0
         self.EPSILON_MIN = 0.005
         self.EPSILON_DECAY_END_EPISODE = 1024
-        self.EPSILON_DECAY = (self.EPSILON - self.EPSILON_MIN) / self.EPSILON_DECAY_END_EPISODE
 
         # List of (state (binary grid), next_state (binary grid), reward, terminal) tuples
         self.memory: List[Tuple[List[List[int]], List[List[int]], float, bool]] = []
@@ -58,7 +55,7 @@ class Player:
         return best_state
 
     def choose_state(self, states: List[List[List[PieceType]]]) -> List[List[PieceType]]:
-        if np.random.rand() < self.EPSILON:
+        if np.random.rand() < self.epsilon:
             return states[np.random.randint(len(states))]
         else:
             return self.get_best_state(states)
@@ -99,6 +96,14 @@ class Player:
 
         self.model.fit(np.reshape(x, (self.BATCH_SIZE, Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1)), np.array(y), epochs=self.NUM_EPOCHS, verbose=0)
     
-    def try_to_decay_epsilon(self) -> None:
-        if self.EPSILON > self.EPSILON_MIN:
-            self.EPSILON -= self.EPSILON_DECAY
+    def update_epsilon(self, episode_number: int) -> None:
+        if episode_number < self.EPSILON_DECAY_END_EPISODE:
+            self.epsilon = 1.0 - (1.0 - self.EPSILON_MIN) * (episode_number / self.EPSILON_DECAY_END_EPISODE)
+        else:
+            self.epsilon = self.EPSILON_MIN
+    
+    def save_model(self, path: str) -> None:
+        self.model.save(path)
+    
+    def load_model(self, path: str) -> None:
+        self.model = models.load_model(path)

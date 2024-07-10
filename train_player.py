@@ -4,7 +4,10 @@ from action import Action
 from game import Game, Piece, PieceType
 from player import Player
 
-NUM_EPISODES = 2048
+model_load_path = None
+model_save_path = "cnn.keras"
+NUM_EPISODES = 8192
+EPISODES_BETWEEN_SAVES = 128
 player = Player()
 
 def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], non_terminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
@@ -90,6 +93,10 @@ def calculate_results_and_paths(initial_stack: List[List[PieceType]], initial_pi
 
     return results_and_paths
 
+if model_load_path is not None:
+    print("Loading model from", model_load_path)
+    player.load_model(model_load_path)
+
 for episode_number in range(NUM_EPISODES):
     game = Game()
     print("Episode", episode_number + 1, "of", NUM_EPISODES)
@@ -110,7 +117,11 @@ for episode_number in range(NUM_EPISODES):
     
     print("Rows cleared:", total_rows_cleared)
     player.try_to_fit_on_memory()
-    player.try_to_decay_epsilon()
+    player.update_epsilon(episode_number)
+
+    if episode_number % EPISODES_BETWEEN_SAVES == EPISODES_BETWEEN_SAVES - 1:
+        print("Saving model to", model_save_path)
+        player.save_model(model_save_path)
 
 # def debug_print_stack(stack: List[List[PieceType]]) -> None:
 #     for row in stack:
