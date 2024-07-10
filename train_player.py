@@ -5,15 +5,15 @@ from game import Game, Piece, PieceType
 from player import Player
 
 model_load_path = None
-model_save_path = "cnn.keras"
+model_save_path = "dense.keras"
 NUM_EPISODES = 8192
 EPISODES_BETWEEN_SAVES = 128
-player = Player()
+player = Player("dense")
 
-def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], non_terminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
-    if piece in non_terminal_piece_to_path:
+def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], nonterminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
+    if piece in nonterminal_piece_to_path:
         return
-    non_terminal_piece_to_path[piece] = path
+    nonterminal_piece_to_path[piece] = path
 
     for action in [Action.DO_NOTHING, Action.MOVE_LEFT, Action.MOVE_RIGHT, Action.ROTATE_CLOCKWISE, Action.ROTATE_COUNTERCLOCKWISE]:
         if action == Action.DO_NOTHING:
@@ -62,7 +62,7 @@ def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[L
             if not new_piece.is_colliding_or_out_of_bounds(stack):
                 terminal_piece_to_path[new_piece] = new_path
         else:
-            include_pieces_and_paths_dfs(new_piece, new_path, stack, terminal_piece_to_path, non_terminal_piece_to_path)
+            include_pieces_and_paths_dfs(new_piece, new_path, stack, terminal_piece_to_path, nonterminal_piece_to_path)
 
 def stacks_are_equal(stack1: List[List[PieceType]], stack2: List[List[PieceType]]) -> bool:
     for row1, row2 in zip(stack1, stack2):
@@ -73,8 +73,8 @@ def stacks_are_equal(stack1: List[List[PieceType]], stack2: List[List[PieceType]
 
 def calculate_results_and_paths(initial_stack: List[List[PieceType]], initial_piece) -> List[Tuple[List[List[PieceType]], List[Action]]]:
     terminal_piece_to_path = {}
-    non_terminal_piece_to_path = {}
-    include_pieces_and_paths_dfs(initial_piece, [], initial_stack, terminal_piece_to_path, non_terminal_piece_to_path)
+    nonterminal_piece_to_path = {}
+    include_pieces_and_paths_dfs(initial_piece, [], initial_stack, terminal_piece_to_path, nonterminal_piece_to_path)
 
     results_and_paths = []
     for terminal_piece, path in terminal_piece_to_path.items():
@@ -107,14 +107,14 @@ for episode_number in range(NUM_EPISODES):
         initial_stack = copy.deepcopy(game.stack)
         results_and_paths = calculate_results_and_paths(game.stack, game.current_piece)
         if results_and_paths == []:
-            player.memorize(initial_stack, None, 0, True)
+            player.memorize(initial_stack, None, 0)
             break
 
         best_stack = player.choose_state([stack for stack, _ in results_and_paths])
         rows_cleared = game.update_stack_and_return_rows_cleared(best_stack)
         total_rows_cleared += rows_cleared
         new_stack = copy.deepcopy(game.stack)
-        player.memorize(initial_stack, new_stack, rows_cleared, False)
+        player.memorize(initial_stack, new_stack, rows_cleared)
     
     print("Rows cleared:", total_rows_cleared)
     player.try_to_fit_on_memory()

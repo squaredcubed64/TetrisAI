@@ -18,8 +18,8 @@ class Player:
 
         self.architecture = architecture
 
-        # List of (state (binary grid), next_state (binary grid), reward, terminal) tuples
-        self.memory: List[Tuple[List[List[int]], List[List[int]], float, bool]] = []
+        # List of (state (binary grid), next_state (binary grid), reward) tuples
+        self.memory: List[Tuple[List[List[int]], List[List[int]] | None, float]] = []
         # # List of (max_height, full_rows, bumpiness, holes) tuples
         # self.memory_dense: List[Tuple[int, int, int, int]] = []
 
@@ -45,12 +45,12 @@ class Player:
     def convert_stack_to_binary_grid(self, state: List[List[PieceType]]) -> List[List[int]]:
         return [[1 if cell != PieceType.EMPTY else 0 for cell in row] for row in state]
 
-    def memorize(self, state: List[List[PieceType]], next_state: List[List[PieceType]] | None, reward: float, terminal: bool) -> None:
+    def memorize(self, state: List[List[PieceType]], next_state: List[List[PieceType]] | None, reward: float) -> None:
         if next_state is None:
             next_state_as_binary_grid = None
         else:
             next_state_as_binary_grid = self.convert_stack_to_binary_grid(next_state)
-        self.memory.append((self.convert_stack_to_binary_grid(state), next_state_as_binary_grid, reward, terminal))
+        self.memory.append((self.convert_stack_to_binary_grid(state), next_state_as_binary_grid, reward))
 
         # if self.architecture == "dense":
         #     self.memory_dense.append(self.get_features(state))
@@ -143,10 +143,8 @@ class Player:
         x = []
         y = []
 
-        for i, (state, _, reward, terminal) in enumerate(batch):
-            q_value = reward
-            if not terminal:
-                q_value += self.DISCOUNT_FACTOR * next_q_values[i]
+        for i, (state, _, reward, _) in enumerate(batch):
+            q_value = reward + self.DISCOUNT_FACTOR * next_q_values[i]
 
             x.append(state)
             y.append(q_value)
