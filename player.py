@@ -2,20 +2,23 @@ import random
 from typing import List, Tuple
 from keras import layers, models, initializers
 import numpy as np
+import tensorflow as tf
+from custom_initializer import ListInitializer
 from game import Game, PieceType
 
 class Player:
     def __init__(self, architecture: str) -> None:
-        self.BATCH_SIZE = 8
-        self.REPLAY_START = 32
+        self.BATCH_SIZE = 8 # 512
+        self.REPLAY_START = 32 # 2048
         self.DISCOUNT_FACTOR = 0.96
         self.NUM_EPOCHS = 1
         self.NUM_FEATURES = 4
 
-        self.epsilon = 1.0
+        self.EPSILON_MAX = 0.01 # 1.0
         self.EPSILON_MIN = 0.005
         self.EPSILON_DECAY_END_EPISODE = 1024
-
+        self.epsilon = 1.0
+        
         self.architecture = architecture
 
         # List of (state (binary grid), next_state (binary grid), reward) tuples
@@ -42,9 +45,9 @@ class Player:
             ])
         elif architecture == "linear_regression":
             initial_weights = [.1, 0, -.1, -2]
-            weight_initializer = initializers.Constant(value=initial_weights)
+            weight_initializer = ListInitializer(initial_weights)
             self.model = models.Sequential([
-                layers.Dense(1, input_dim=self.NUM_FEATURES, activation='linear', kernel_initializer=weight_initializer, bias_initializer='zeros'),
+                layers.Dense(1, input_dim=self.NUM_FEATURES, activation='linear', kernel_initializer=weight_initializer)
             ])
         self.model.compile(optimizer='adam', loss='mean_squared_error')
 
@@ -162,7 +165,7 @@ class Player:
     
     def update_epsilon(self, episode_number: int) -> None:
         if episode_number < self.EPSILON_DECAY_END_EPISODE:
-            self.epsilon = 1.0 - (1.0 - self.EPSILON_MIN) * (episode_number / self.EPSILON_DECAY_END_EPISODE)
+            self.epsilon = self.EPSILON_MAX - (self.EPSILON_MAX - self.EPSILON_MIN) * (episode_number / self.EPSILON_DECAY_END_EPISODE)
         else:
             self.epsilon = self.EPSILON_MIN
     
