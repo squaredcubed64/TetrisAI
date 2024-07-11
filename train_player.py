@@ -3,12 +3,15 @@ from typing import Dict, List, Tuple
 from action import Action
 from game import Game, Piece, PieceType
 from player import Player
+import cProfile
+import pstats
 
+NUM_EPISODES = 1 # TODO 8192
+EPISODES_BETWEEN_SAVES = 4
+architecture = "linear_regression"
+player = Player(architecture)
 model_load_path = None
-model_save_path = "linear_regression.keras"
-NUM_EPISODES = 8192
-EPISODES_BETWEEN_SAVES = 128
-player = Player("linear_regression")
+model_save_path = architecture + ".keras"
 
 def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], nonterminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
     if piece in nonterminal_piece_to_path:
@@ -94,55 +97,40 @@ def calculate_results_and_paths(initial_stack: List[List[PieceType]], initial_pi
 
     return results_and_paths
 
-if model_load_path is not None:
-    print("Loading model from", model_load_path)
-    player.load_model(model_load_path)
+def main():
+    if model_load_path is not None:
+        print("Loading model from", model_load_path)
+        player.load_model(model_load_path)
 
-for episode_number in range(NUM_EPISODES):
-    game = Game()
-    print("Episode", episode_number + 1, "of", NUM_EPISODES)
-    total_rows_cleared = 0
+    for episode_number in range(NUM_EPISODES):
+        game = Game()
+        print("Episode", episode_number + 1, "of", NUM_EPISODES)
+        total_rows_cleared = 0
 
-    while True:
-        initial_stack = copy.deepcopy(game.stack)
-        results_and_paths = calculate_results_and_paths(game.stack, game.current_piece)
-        if results_and_paths == []:
-            player.memorize(initial_stack, None, 0)
-            break
+        while True:
+            initial_stack = copy.deepcopy(game.stack)
+            results_and_paths = calculate_results_and_paths(game.stack, game.current_piece)
+            if results_and_paths == []:
+                player.memorize(initial_stack, None, 0)
+                break
 
-        best_stack = player.choose_state([stack for stack, _ in results_and_paths])
-        rows_cleared = game.update_stack_and_return_rows_cleared(best_stack)
-        total_rows_cleared += rows_cleared
-        new_stack = copy.deepcopy(game.stack)
-        player.memorize(initial_stack, new_stack, rows_cleared)
-    
-    print("Rows cleared:", total_rows_cleared)
-    player.try_to_fit_on_memory()
-    player.update_epsilon(episode_number)
+            best_stack = player.choose_state([stack for stack, _ in results_and_paths])
+            rows_cleared = game.update_stack_and_return_rows_cleared(best_stack)
+            total_rows_cleared += rows_cleared
+            new_stack = copy.deepcopy(game.stack)
+            player.memorize(initial_stack, new_stack, rows_cleared)
+        
+        print("Rows cleared:", total_rows_cleared)
+        player.try_to_fit_on_memory()
+        player.update_epsilon(episode_number)
 
-    if episode_number % EPISODES_BETWEEN_SAVES == EPISODES_BETWEEN_SAVES - 1:
-        print("Saving model to", model_save_path)
-        player.save_model(model_save_path)
+        if episode_number % EPISODES_BETWEEN_SAVES == EPISODES_BETWEEN_SAVES - 1:
+            print("Saving model to", model_save_path)
+            player.save_model(model_save_path)
 
-# def debug_print_stack(stack: List[List[PieceType]]) -> None:
-#     for row in stack:
-#         for cell in row:
-#             print(cell, end='')
-#         print()
+with cProfile.Profile() as profile:
+    main()
 
-# results_and_paths = calculate_results_and_paths([[PieceType.EMPTY for _ in range(BOARD_WIDTH_CELLS)] for _ in range(BOARD_HEIGHT_CELLS)], Piece(PieceType.I, (0, 0)))
-# for stack, path in results_and_paths:
-#     print_stack(stack)
-#     print(path)
-#     print()
-
-# def num_holes(stack: List[List[PieceType]]) -> int:
-#     holes = 0
-#     for x in range(BOARD_WIDTH_CELLS):
-#         hole_found = False
-#         for y in range(BOARD_HEIGHT_CELLS):
-#             if stack[y][x] != PieceType.EMPTY:
-#                 hole_found = True
-#             elif hole_found:
-#                 holes += 1
-#     return holes
+results = pstats.Stats(profile)
+results.strip_dirs()
+results.dump_stats("train_player.prof")

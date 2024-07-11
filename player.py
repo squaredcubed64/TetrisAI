@@ -1,21 +1,20 @@
 import random
 from typing import List, Tuple
-from keras import layers, models, initializers
+from keras import layers, models
 import numpy as np
-import tensorflow as tf
 from custom_initializer import ListInitializer
 from game import Game, PieceType
 
 class Player:
     def __init__(self, architecture: str) -> None:
-        self.BATCH_SIZE = 8 # 512
-        self.REPLAY_START = 32 # 2048
+        self.BATCH_SIZE = 8 # TODO 512
+        self.REPLAY_START = 32 # TODO 2048
         self.DISCOUNT_FACTOR = 0.96
         self.NUM_EPOCHS = 1
         self.NUM_FEATURES = 4
 
-        self.EPSILON_MAX = 0.01 # 1.0
-        self.EPSILON_MIN = 0.005
+        self.EPSILON_MAX = 0.01 # TODO 1.0
+        self.EPSILON_MIN = 0.01
         self.EPSILON_DECAY_END_EPISODE = 1024
         self.epsilon = 1.0
         
