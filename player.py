@@ -116,8 +116,8 @@ class Player:
         return best_state
 
     def choose_state(self, states: List[List[List[PieceType]]]) -> List[List[PieceType]]:
-        if np.random.rand() < self.epsilon:
-            return states[np.random.randint(len(states))]
+        if random.random() < self.epsilon:
+            return states[random.randint(0, len(states) - 1)]
         else:
             return self.get_best_state(states)
         

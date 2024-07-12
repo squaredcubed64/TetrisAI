@@ -1,17 +1,21 @@
 import copy
+import time
 from typing import Dict, List, Tuple
 from action import Action
 from game import Game, Piece, PieceType
 from player import Player
 import cProfile
 import pstats
+import random
 
-NUM_EPISODES = 2 # TODO 8192
+NUM_EPISODES = 20 # TODO 8192
 EPISODES_BETWEEN_SAVES = 4
 architecture = "linear_regression"
 player = Player(architecture)
 model_load_path = None
 model_save_path = None # architecture + ".keras"
+
+random.seed(42)
 
 def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], nonterminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
     if piece in nonterminal_piece_to_path:
@@ -128,7 +132,15 @@ def main():
             print("Saving model to", model_save_path)
             player.save_model(model_save_path)
 
-main()
+def time_main():
+    start_time = time.time()
+    main()
+    end_time = time.time()
+
+    execution_time = end_time - start_time
+    print("Execution time:", execution_time, "seconds")
+
+time_main()
 
 # with cProfile.Profile() as profile:
 #     main()
