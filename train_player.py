@@ -6,12 +6,12 @@ from player import Player
 import cProfile
 import pstats
 
-NUM_EPISODES = 1 # TODO 8192
+NUM_EPISODES = 2 # TODO 8192
 EPISODES_BETWEEN_SAVES = 4
 architecture = "linear_regression"
 player = Player(architecture)
 model_load_path = None
-model_save_path = architecture + ".keras"
+model_save_path = None # architecture + ".keras"
 
 def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], nonterminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
     if piece in nonterminal_piece_to_path:
@@ -124,13 +124,15 @@ def main():
         player.try_to_fit_on_memory()
         player.update_epsilon(episode_number)
 
-        if episode_number % EPISODES_BETWEEN_SAVES == EPISODES_BETWEEN_SAVES - 1:
+        if model_save_path is not None and episode_number % EPISODES_BETWEEN_SAVES == EPISODES_BETWEEN_SAVES - 1:
             print("Saving model to", model_save_path)
             player.save_model(model_save_path)
 
-with cProfile.Profile() as profile:
-    main()
+main()
 
-results = pstats.Stats(profile)
-results.strip_dirs()
-results.dump_stats("train_player.prof")
+# with cProfile.Profile() as profile:
+#     main()
+
+# results = pstats.Stats(profile)
+# results.strip_dirs()
+# results.dump_stats("train_player.prof")
