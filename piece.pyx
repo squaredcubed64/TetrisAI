@@ -52,6 +52,9 @@ class Piece:
     def place_on_stack(self, stack: List[List[PieceType]]) -> None:
         for x, y in self.get_cells():
             stack[y][x] = self.type
+    
+    def have_same_cells(self, other: 'Piece') -> bool:
+        return self.get_cells() == other.get_cells()
 
     def __hash__ (self) -> int:
         return hash((self.type, self.top_left, self.rotation))

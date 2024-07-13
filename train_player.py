@@ -1,6 +1,6 @@
 import copy
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 from action import Action
 from game import Game, Piece, PieceType
 from player import Player
@@ -8,7 +8,7 @@ import cProfile
 import pstats
 import random
 
-NUM_EPISODES = 20 # TODO 8192
+NUM_EPISODES = 2 # TODO 8192
 EPISODES_BETWEEN_SAVES = 4
 architecture = "linear_regression"
 player = Player(architecture)
@@ -17,6 +17,7 @@ model_save_path = None # architecture + ".keras"
 
 random.seed(42)
 
+@profile
 def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], nonterminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
     if piece in nonterminal_piece_to_path:
         return
@@ -78,25 +79,24 @@ def stacks_are_equal(stack1: List[List[PieceType]], stack2: List[List[PieceType]
                 return False
     return True
 
-def calculate_results_and_paths(initial_stack: List[List[PieceType]], initial_piece) -> List[Tuple[List[List[PieceType]], List[Action]]]:
+def calculate_results_and_paths(initial_stack: List[List[PieceType]], initial_piece: Piece) -> List[Tuple[List[List[PieceType]], List[Action]]]:
     terminal_piece_to_path = {}
     nonterminal_piece_to_path = {}
     include_pieces_and_paths_dfs(initial_piece, [], initial_stack, terminal_piece_to_path, nonterminal_piece_to_path)
 
-    results_and_paths = []
+    results_and_paths: List[Tuple[List[List[PieceType]], List[Action]]] = []
+    pieces_seen: List[Piece] = []
     for terminal_piece, path in terminal_piece_to_path.items():
-        stack_copy = copy.deepcopy(initial_stack)
-        terminal_piece.place_on_stack(stack_copy)
-
-        seen_this_stack = False
-        for i in range(len(results_and_paths)):
-            if stacks_are_equal(results_and_paths[i][0], stack_copy):
-                if len(path) < len(results_and_paths[i][1]):
-                    results_and_paths[i] = (stack_copy, path)
-                seen_this_stack = True
+        seen_this_piece = False
+        for i in range(len(pieces_seen)):
+            if terminal_piece.have_same_cells(pieces_seen[i]):
+                seen_this_piece = True
                 break
         
-        if not seen_this_stack:
+        if not seen_this_piece:
+            stack_copy = copy.deepcopy(initial_stack)
+            terminal_piece.place_on_stack(stack_copy)
+            pieces_seen.append(terminal_piece)
             results_and_paths.append((stack_copy, path))
 
     return results_and_paths
@@ -140,7 +140,7 @@ def time_main():
     execution_time = end_time - start_time
     print("Execution time:", execution_time, "seconds")
 
-time_main()
+main()
 
 # with cProfile.Profile() as profile:
 #     main()
