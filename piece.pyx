@@ -1,28 +1,36 @@
-from typing import List, Set, Tuple
+from libc.stdint cimport int32
+from libcpp.set cimport set
+from libcpp.vector cimport vector
+from libcpp.utility cimport pair
+from cpython cimport bool
 from piece_type import PieceType
 from rotation import Rotation
 
-class Piece:
-    def __init__(self, type: PieceType, top_left: Tuple[int, int], rotation: Rotation = Rotation.ZERO):
+cdef class Piece:
+    cdef public PieceType type
+    cdef public pair[int, int] top_left
+    cdef public Rotation rotation
+
+    def __init__(self, PieceType type, pair[int, int] top_left, Rotation rotation=Rotation.ZERO):
         self.type = type
         self.top_left = top_left
         self.rotation = rotation
     
-    def move(self, offset: Tuple[int, int]) -> None:
-        self.top_left = (self.top_left[0] + offset[0], self.top_left[1] + offset[1])
+    cpdef move(self, pair[int, int] offset):
+        self.top_left = (self.top_left.first + offset.first, self.top_left.first + offset.first)
     
-    def rotate_counterclockwise(self) -> None:
+    cpdef rotate_counterclockwise(self):
         self.rotation = self.rotation.counterclockwise()
     
-    def rotate_clockwise(self) -> None:
+    cpdef rotate_clockwise(self):
         self.rotation = self.rotation.clockwise()
     
     @staticmethod
-    def rotate_body_clockwise(body: Set[Tuple[int, int]], bounding_box_size: int) -> Set[Tuple[int, int]]:
+    cdef set[pair[int, int]] rotate_body_clockwise(set[pair[int, int]] body, int bounding_box_size):
         return {(bounding_box_size - 1 - y, x) for x, y in body}
 
-    def get_cells(self) -> Set[Tuple[int, int]]:
-        cells_relative_to_top_left = set()
+    cpdef set[pair[int, int]] get_cells(self):
+        cdef set[pair[int, int]] cells_relative_to_top_left
         if self.rotation == Rotation.ZERO:
             cells_relative_to_top_left = self.type.up_body
         elif self.rotation == Rotation.RIGHT:
@@ -31,7 +39,7 @@ class Piece:
             cells_relative_to_top_left = Piece.rotate_body_clockwise(Piece.rotate_body_clockwise(self.type.up_body, self.type.bounding_box_size), self.type.bounding_box_size)
         elif self.rotation == Rotation.LEFT:
             cells_relative_to_top_left = Piece.rotate_body_clockwise(Piece.rotate_body_clockwise(Piece.rotate_body_clockwise(self.type.up_body, self.type.bounding_box_size), self.type.bounding_box_size), self.type.bounding_box_size)
-        return {(x + self.top_left[0], y + self.top_left[1]) for x, y in cells_relative_to_top_left}
+        return {(x + self.top_left.first, y + self.top_left.second) for x, y in cells_relative_to_top_left}
     
     def is_out_of_bounds(self, board_width: int, board_height: int) -> bool:
         for x, y in self.get_cells():
@@ -40,20 +48,22 @@ class Piece:
         return False
 
     # indexError if piece is out of bounds
-    def is_colliding_with_stack(self, stack: List[List[PieceType]]) -> bool:
+    cpdef bool is_colliding_with_stack(self, vector[vector[PieceType]] stack):
+        cdef int x, y
         for x, y in self.get_cells():
             if stack[y][x] != PieceType.EMPTY:
                 return True
         return False
-    
-    def is_colliding_or_out_of_bounds(self, stack: List[List[PieceType]]) -> bool:
-        return self.is_out_of_bounds(len(stack[0]), len(stack)) or self.is_colliding_with_stack(stack)
-    
-    def place_on_stack(self, stack: List[List[PieceType]]) -> None:
+
+    cpdef bool is_colliding_or_out_of_bounds(self, vector[vector[PieceType]] stack):
+        return self.is_out_of_bounds(stack[0].size(), stack.size()) or self.is_colliding_with_stack(stack)
+
+    cpdef place_on_stack(self, vector[vector[PieceType]] stack):
+        cdef int x, y
         for x, y in self.get_cells():
             stack[y][x] = self.type
-    
-    def have_same_cells(self, other: 'Piece') -> bool:
+
+    cpdef bool have_same_cells(self, Piece other):
         return self.get_cells() == other.get_cells()
 
     def __hash__ (self) -> int:

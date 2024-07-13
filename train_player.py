@@ -2,23 +2,29 @@ import copy
 import time
 from typing import Dict, List, Set, Tuple
 from action import Action
-from game import Game, Piece, PieceType
+from game import Game
 from player import Player
+from piece import Piece
 import cProfile
 import pstats
 import random
+import matplotlib.pyplot as plt
 
-NUM_EPISODES = 2 # TODO 8192
+NUM_EPISODES = 8192
 EPISODES_BETWEEN_SAVES = 4
+EPISODES_BETWEEN_PLOTS = 4
 architecture = "linear_regression"
 player = Player(architecture)
-model_load_path = None
+model_load_path = None # architecture + ".keras"
 model_save_path = None # architecture + ".keras"
+memory_load_path = None # architecture + ".pickle"
+memory_save_path = architecture + ".pickle"
+rows_cleared_memory: List[int] = []
 
 random.seed(42)
 
-@profile
-def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[PieceType]], terminal_piece_to_path: Dict[Piece, List[Action]], nonterminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
+# @profile
+def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[List[int]], terminal_piece_to_path: Dict[Piece, List[Action]], nonterminal_piece_to_path: Dict[Piece, List[Action]]) -> None:
     if piece in nonterminal_piece_to_path:
         return
     nonterminal_piece_to_path[piece] = path
@@ -72,24 +78,17 @@ def include_pieces_and_paths_dfs(piece: Piece, path: List[Action], stack: List[L
         else:
             include_pieces_and_paths_dfs(new_piece, new_path, stack, terminal_piece_to_path, nonterminal_piece_to_path)
 
-def stacks_are_equal(stack1: List[List[PieceType]], stack2: List[List[PieceType]]) -> bool:
-    for row1, row2 in zip(stack1, stack2):
-        for cell1, cell2 in zip(row1, row2):
-            if (cell1 == PieceType.EMPTY) != (cell2 == PieceType.EMPTY):
-                return False
-    return True
-
-def calculate_results_and_paths(initial_stack: List[List[PieceType]], initial_piece: Piece) -> List[Tuple[List[List[PieceType]], List[Action]]]:
-    terminal_piece_to_path = {}
-    nonterminal_piece_to_path = {}
+def calculate_results_and_paths(initial_stack: List[List[int]], initial_piece: Piece) -> List[Tuple[List[List[int]], List[Action]]]:
+    terminal_piece_to_path: Dict[Piece, List[Action]] = {}
+    nonterminal_piece_to_path: Dict[Piece, List[Action]] = {}
     include_pieces_and_paths_dfs(initial_piece, [], initial_stack, terminal_piece_to_path, nonterminal_piece_to_path)
 
-    results_and_paths: List[Tuple[List[List[PieceType]], List[Action]]] = []
+    results_and_paths: List[Tuple[List[List[int]], List[Action]]] = []
     pieces_seen: List[Piece] = []
     for terminal_piece, path in terminal_piece_to_path.items():
         seen_this_piece = False
         for i in range(len(pieces_seen)):
-            if terminal_piece.have_same_cells(pieces_seen[i]):
+            if terminal_piece.has_same_cells(pieces_seen[i]):
                 seen_this_piece = True
                 break
         
@@ -105,6 +104,9 @@ def main():
     if model_load_path is not None:
         print("Loading model from", model_load_path)
         player.load_model(model_load_path)
+    if memory_load_path is not None:
+        print("Loading memory from", memory_load_path)
+        player.load_memory(memory_load_path)
 
     for episode_number in range(NUM_EPISODES):
         game = Game()
@@ -125,12 +127,30 @@ def main():
             player.memorize(initial_stack, new_stack, rows_cleared)
         
         print("Rows cleared:", total_rows_cleared)
+        rows_cleared_memory.append(total_rows_cleared)
         player.try_to_fit_on_memory()
         player.update_epsilon(episode_number)
 
-        if model_save_path is not None and episode_number % EPISODES_BETWEEN_SAVES == EPISODES_BETWEEN_SAVES - 1:
-            print("Saving model to", model_save_path)
-            player.save_model(model_save_path)
+        if architecture == "linear_regression":
+            for layer in player.model.layers:
+                weights = layer.get_weights()  # returns a list of all weight tensors in the layer
+                print("Weights:", [weights[0][i][0] for i in range(player.NUM_FEATURES)])
+        
+        if episode_number % EPISODES_BETWEEN_SAVES == EPISODES_BETWEEN_SAVES - 1:
+            if model_save_path is not None:
+                print("Saving model to", model_save_path)
+                player.save_model(model_save_path)
+            if memory_save_path is not None:
+                print("Saving memory to", memory_save_path)
+                player.save_memory(memory_save_path)
+        
+        if episode_number % EPISODES_BETWEEN_PLOTS == EPISODES_BETWEEN_PLOTS - 1:
+            plt.plot(rows_cleared_memory, color="blue")
+            plt.xlabel("Episode")
+            plt.ylabel("Rows cleared")
+            plt.ylim(bottom=0)
+            plt.show(block=False)
+            plt.pause(0.1)
 
 def time_main():
     start_time = time.time()

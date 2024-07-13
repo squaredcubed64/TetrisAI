@@ -15,7 +15,7 @@ class Game:
     FRAMES_BETWEEN_ACTIONS = 5
 
     def __init__(self):
-        self.stack = [[PieceType.EMPTY for _ in range(self.BOARD_WIDTH_CELLS)] for _ in range(self.BOARD_HEIGHT_CELLS)]
+        self.stack: List[List[int]] = [[0 for _ in range(self.BOARD_WIDTH_CELLS)] for _ in range(self.BOARD_HEIGHT_CELLS)]
         self.current_piece = None
         self.next_piece_types = [random.choice([PieceType.I, PieceType.J, PieceType.L, PieceType.O, PieceType.S, PieceType.Z, PieceType.T]) for _ in range(5)]
         self.spawn_piece()
@@ -23,11 +23,11 @@ class Game:
     def clear_rows_and_return_rows_cleared(self) -> int:
         rows_to_clear = []
         for y in range(self.BOARD_HEIGHT_CELLS):
-            if all(cell != PieceType.EMPTY for cell in self.stack[y]):
+            if all(self.stack[y]):
                 rows_to_clear.append(y)
         for row in rows_to_clear:
             self.stack.pop(row)
-            self.stack.insert(0, [PieceType.EMPTY for _ in range(self.BOARD_WIDTH_CELLS)])
+            self.stack.insert(0, [0 for _ in range(self.BOARD_WIDTH_CELLS)])
         return len(rows_to_clear)
 
     def spawn_piece(self) -> None:
@@ -39,7 +39,7 @@ class Game:
         
         self.next_piece_types.append(random.choice([PieceType.I, PieceType.J, PieceType.L, PieceType.O, PieceType.S, PieceType.Z, PieceType.T]))
     
-    def update_stack_and_return_rows_cleared(self, stack: List[List[PieceType]]) -> int:
+    def update_stack_and_return_rows_cleared(self, stack: List[List[int]]) -> int:
         self.stack = stack
         rows_cleared = self.clear_rows_and_return_rows_cleared()
         self.spawn_piece()

@@ -2,21 +2,21 @@ import random
 from typing import List, Tuple
 from keras import layers, models
 import numpy as np
-from custom_initializer import ListInitializer
-from game import Game, PieceType
+from game import Game
+import pickle
 
 class Player:
     def __init__(self, architecture: str) -> None:
         self.BATCH_SIZE = 512
         self.REPLAY_START = 2048
         self.DISCOUNT_FACTOR = 0.96
-        self.NUM_EPOCHS = 1
+        self.NUM_EPOCHS = 16
         self.NUM_FEATURES = 4
 
-        self.EPSILON_MAX = 1.0
-        self.EPSILON_MIN = 0.01
+        self.EPSILON_MAX = .12
+        self.EPSILON_MIN = .12
         self.EPSILON_DECAY_END_EPISODE = 1024
-        self.epsilon = 1.0
+        self.epsilon = .12
         
         self.architecture = architecture
 
@@ -43,22 +43,14 @@ class Player:
                 layers.Dense(1, activation='linear')
             ])
         elif architecture == "linear_regression":
-            initial_weights = [.1, 0, -.1, -2]
-            weight_initializer = ListInitializer(initial_weights)
             self.model = models.Sequential([
-                layers.Dense(1, input_dim=self.NUM_FEATURES, activation='linear', kernel_initializer=weight_initializer)
+                layers.Dense(1, input_dim=self.NUM_FEATURES, activation='linear')
             ])
+            self.model.layers[0].set_weights([np.array([[0.1], [0.01], [-0.1], [-2]]), np.array([0])])
         self.model.compile(optimizer='adam', loss='mean_squared_error')
 
-    def convert_stack_to_binary_grid(self, state: List[List[PieceType]]) -> List[List[int]]:
-        return [[1 if cell != PieceType.EMPTY else 0 for cell in row] for row in state]
-
-    def memorize(self, state: List[List[PieceType]], next_state: List[List[PieceType]] | None, reward: float) -> None:
-        if next_state is None:
-            next_state_as_binary_grid = None
-        else:
-            next_state_as_binary_grid = self.convert_stack_to_binary_grid(next_state)
-        self.memory.append((self.convert_stack_to_binary_grid(state), next_state_as_binary_grid, reward))
+    def memorize(self, state: List[List[int]], next_state: List[List[int]] | None, reward: float) -> None:
+        self.memory.append((state, next_state, reward))
 
         # if self.architecture == "dense":
         #     self.memory_dense.append(self.get_features(state))
@@ -98,16 +90,15 @@ class Player:
     def get_features(self, stack: List[List[int]]) -> Tuple[int, int, int, int]:
         return (self.get_max_height(stack), self.get_full_rows(stack), self.get_bumpiness(stack), self.get_holes(stack))
 
-    def get_best_state(self, states: List[List[List[PieceType]]]) -> List[List[PieceType]]:
+    def get_best_state(self, states: List[List[List[int]]]) -> List[List[int]]:
         best_state = None
         best_value = None
 
         for state in states:
-            binary_grid = self.convert_stack_to_binary_grid(state)
             if self.architecture == "cnn":
-                value = self.model.predict(np.reshape(binary_grid, (1, Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1)), verbose=0)[0][0]
+                value = self.model.predict(np.reshape(state, (1, Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1)), verbose=0)[0][0]
             elif self.architecture == "dense" or self.architecture == "linear_regression":
-                value = self.model.predict(np.reshape(self.get_features(binary_grid), (1, self.NUM_FEATURES)), verbose=0)[0][0]
+                value = self.model.predict(np.reshape(self.get_features(state), (1, self.NUM_FEATURES)), verbose=0)[0][0]
 
             if best_value is None or value > best_value:
                 best_state = state
@@ -115,7 +106,7 @@ class Player:
         
         return best_state
 
-    def choose_state(self, states: List[List[List[PieceType]]]) -> List[List[PieceType]]:
+    def choose_state(self, states: List[List[List[int]]]) -> List[List[int]]:
         if random.random() < self.epsilon:
             return states[random.randint(0, len(states) - 1)]
         else:
@@ -170,6 +161,20 @@ class Player:
     
     def save_model(self, path: str) -> None:
         self.model.save(path)
+        # TODO remove
+        self.model = models.load_model(path)
     
     def load_model(self, path: str) -> None:
         self.model = models.load_model(path)
+
+    def save_memory(self, path: str) -> None:
+        with open(path, 'wb') as f:
+            pickle.dump(self.memory, f)
+    
+    def load_memory(self, path: str) -> None:
+        with open(path, 'rb') as f:
+            self.memory = pickle.load(f)
+    
+    def print_weights(self) -> None:
+        print(self.model.get_weights())
+    

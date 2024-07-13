@@ -6,7 +6,7 @@ import random
 from piece_type import PieceType
 import time
 
-def piece_type_test():
+def test_stack():
     grid = [[random.choice(list(PieceType)) for _ in range(10)] for _ in range(20)]
     start_time = time.time()
     for _ in range(100000):
@@ -15,7 +15,7 @@ def piece_type_test():
     elapsed_time = end_time - start_time
     print("Elapsed time:", elapsed_time, "seconds")
 
-def binary_grid_test():
+def test_binary_stack():
     binary_grid = [[random.choice([0, 1]) for _ in range(10)] for _ in range(20)]
     start_time = time.time()
     for _ in range(100000):
@@ -24,5 +24,5 @@ def binary_grid_test():
     elapsed_time = end_time - start_time
     print("Elapsed time:", elapsed_time, "seconds")
 
-piece_type_test()
-binary_grid_test()
+test_stack()
+test_binary_stack()

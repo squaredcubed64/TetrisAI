@@ -1,4 +1,6 @@
 __pycache__/
+build/
 *.pyc
 *.prof
 *.lprof
+*.pyd
