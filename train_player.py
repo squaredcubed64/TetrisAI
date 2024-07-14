@@ -10,16 +10,16 @@ import pstats
 import random
 import matplotlib.pyplot as plt
 
-NUM_EPISODES = 8192
+NUM_EPISODES = 1
 EPISODES_BETWEEN_SAVES = 4
 EPISODES_BETWEEN_PLOTS = 4
-ARCHITECTURE = "dense"
+ARCHITECTURE = "linear_regression"
 player = Player(ARCHITECTURE)
-MODEL_LOAD_PATH = None # architecture + ".keras"
-MODEL_SAVE_PATH = ARCHITECTURE + ".keras"
-MEMORY_LOAD_PATH = "memory.pickle"
-MEMORY_SAVE_PATH = None # architecture + ".pickle"
-MEMORIZE = False
+MODEL_LOAD_PATH = None # ARCHITECTURE + ".keras"
+MODEL_SAVE_PATH = None # ARCHITECTURE + ".keras"
+MEMORY_LOAD_PATH = None # "memory.pickle"
+MEMORY_SAVE_PATH = "memory_using_before_clearing.pickle"
+MEMORIZE_GAMES_PLAYED = False
 rows_cleared_memory: List[int] = []
 
 random.seed(42)
@@ -114,20 +114,30 @@ def main():
         print("Episode", episode_number + 1, "of", NUM_EPISODES)
         total_rows_cleared = 0
 
+        states: List[List[List[int]]] = [copy.deepcopy(game.stack)]
+
+        # TODO remove
+        debug_iteration = 0
+
         while True:
-            initial_stack = copy.deepcopy(game.stack)
             results_and_paths = calculate_results_and_paths(game.stack, game.current_piece)
             if results_and_paths == []:
-                if MEMORIZE:
-                    player.memorize(initial_stack, None, 0)
+                states.append(None)
                 break
 
             best_stack = player.choose_state([stack for stack, _ in results_and_paths])
+            states.append(best_stack)
             rows_cleared = game.update_stack_and_return_rows_cleared(best_stack)
             total_rows_cleared += rows_cleared
-            new_stack = copy.deepcopy(game.stack)
-            if MEMORIZE:
-                player.memorize(initial_stack, new_stack, rows_cleared)
+
+            # TODO remove
+            if debug_iteration % 100 == debug_iteration - 1:
+                print("Rows cleared:", total_rows_cleared)
+            debug_iteration += 1
+
+        for i in range(len(states) - 1):
+            if MEMORIZE_GAMES_PLAYED:
+                player.memorize(states[i], states[i + 1])
         
         print("Rows cleared:", total_rows_cleared)
         rows_cleared_memory.append(total_rows_cleared)
@@ -136,9 +146,8 @@ def main():
         player.update_epsilon(episode_number)
 
         if ARCHITECTURE == "linear_regression":
-            for layer in player.model.layers:
-                weights = layer.get_weights()  # returns a list of all weight tensors in the layer
-                print("Weights:", [weights[0][i][0] for i in range(player.NUM_FEATURES)], "Bias:", weights[1][0])
+            weights = player.model.layers[0].get_weights()
+            print("Weights:", [weights[0][i][0] for i in range(player.NUM_FEATURES)], "Bias:", weights[1][0])
         
         if episode_number % EPISODES_BETWEEN_SAVES == EPISODES_BETWEEN_SAVES - 1:
             if MODEL_SAVE_PATH is not None:
@@ -164,7 +173,7 @@ def time_main():
     execution_time = end_time - start_time
     print("Execution time:", execution_time, "seconds")
 
-main()
+time_main()
 
 # with cProfile.Profile() as profile:
 #     main()
