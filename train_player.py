@@ -13,12 +13,13 @@ import matplotlib.pyplot as plt
 NUM_EPISODES = 8192
 EPISODES_BETWEEN_SAVES = 4
 EPISODES_BETWEEN_PLOTS = 4
-architecture = "linear_regression"
-player = Player(architecture)
-model_load_path = None # architecture + ".keras"
-model_save_path = None # architecture + ".keras"
-memory_load_path = None # architecture + ".pickle"
-memory_save_path = architecture + ".pickle"
+ARCHITECTURE = "dense"
+player = Player(ARCHITECTURE)
+MODEL_LOAD_PATH = None # architecture + ".keras"
+MODEL_SAVE_PATH = ARCHITECTURE + ".keras"
+MEMORY_LOAD_PATH = "memory.pickle"
+MEMORY_SAVE_PATH = None # architecture + ".pickle"
+MEMORIZE = False
 rows_cleared_memory: List[int] = []
 
 random.seed(42)
@@ -101,12 +102,12 @@ def calculate_results_and_paths(initial_stack: List[List[int]], initial_piece: P
     return results_and_paths
 
 def main():
-    if model_load_path is not None:
-        print("Loading model from", model_load_path)
-        player.load_model(model_load_path)
-    if memory_load_path is not None:
-        print("Loading memory from", memory_load_path)
-        player.load_memory(memory_load_path)
+    if MODEL_LOAD_PATH is not None:
+        print("Loading model from", MODEL_LOAD_PATH)
+        player.load_model(MODEL_LOAD_PATH)
+    if MEMORY_LOAD_PATH is not None:
+        print("Loading memory from", MEMORY_LOAD_PATH)
+        player.load_memory(MEMORY_LOAD_PATH)
 
     for episode_number in range(NUM_EPISODES):
         game = Game()
@@ -117,38 +118,41 @@ def main():
             initial_stack = copy.deepcopy(game.stack)
             results_and_paths = calculate_results_and_paths(game.stack, game.current_piece)
             if results_and_paths == []:
-                player.memorize(initial_stack, None, 0)
+                if MEMORIZE:
+                    player.memorize(initial_stack, None, 0)
                 break
 
             best_stack = player.choose_state([stack for stack, _ in results_and_paths])
             rows_cleared = game.update_stack_and_return_rows_cleared(best_stack)
             total_rows_cleared += rows_cleared
             new_stack = copy.deepcopy(game.stack)
-            player.memorize(initial_stack, new_stack, rows_cleared)
+            if MEMORIZE:
+                player.memorize(initial_stack, new_stack, rows_cleared)
         
         print("Rows cleared:", total_rows_cleared)
         rows_cleared_memory.append(total_rows_cleared)
+        # TODO remove iteration
         player.try_to_fit_on_memory()
         player.update_epsilon(episode_number)
 
-        if architecture == "linear_regression":
+        if ARCHITECTURE == "linear_regression":
             for layer in player.model.layers:
                 weights = layer.get_weights()  # returns a list of all weight tensors in the layer
-                print("Weights:", [weights[0][i][0] for i in range(player.NUM_FEATURES)])
+                print("Weights:", [weights[0][i][0] for i in range(player.NUM_FEATURES)], "Bias:", weights[1][0])
         
         if episode_number % EPISODES_BETWEEN_SAVES == EPISODES_BETWEEN_SAVES - 1:
-            if model_save_path is not None:
-                print("Saving model to", model_save_path)
-                player.save_model(model_save_path)
-            if memory_save_path is not None:
-                print("Saving memory to", memory_save_path)
-                player.save_memory(memory_save_path)
+            if MODEL_SAVE_PATH is not None:
+                print("Saving model to", MODEL_SAVE_PATH)
+                player.save_model(MODEL_SAVE_PATH)
+            if MEMORY_SAVE_PATH is not None:
+                print("Saving memory to", MEMORY_SAVE_PATH)
+                player.save_memory(MEMORY_SAVE_PATH)
         
         if episode_number % EPISODES_BETWEEN_PLOTS == EPISODES_BETWEEN_PLOTS - 1:
             plt.plot(rows_cleared_memory, color="blue")
             plt.xlabel("Episode")
             plt.ylabel("Rows cleared")
-            plt.ylim(bottom=0)
+            plt.ylim(0, max(rows_cleared_memory))
             plt.show(block=False)
             plt.pause(0.1)
 

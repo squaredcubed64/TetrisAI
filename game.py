@@ -20,14 +20,15 @@ class Game:
         self.next_piece_types = [random.choice([PieceType.I, PieceType.J, PieceType.L, PieceType.O, PieceType.S, PieceType.Z, PieceType.T]) for _ in range(5)]
         self.spawn_piece()
 
-    def clear_rows_and_return_rows_cleared(self) -> int:
+    @staticmethod
+    def clear_rows_and_return_rows_cleared(stack: List[List[int]]) -> int:
         rows_to_clear = []
-        for y in range(self.BOARD_HEIGHT_CELLS):
-            if all(self.stack[y]):
+        for y in range(Game.BOARD_HEIGHT_CELLS):
+            if all(stack[y]):
                 rows_to_clear.append(y)
         for row in rows_to_clear:
-            self.stack.pop(row)
-            self.stack.insert(0, [0 for _ in range(self.BOARD_WIDTH_CELLS)])
+            stack.pop(row)
+            stack.insert(0, [0 for _ in range(Game.BOARD_WIDTH_CELLS)])
         return len(rows_to_clear)
 
     def spawn_piece(self) -> None:
@@ -41,6 +42,6 @@ class Game:
     
     def update_stack_and_return_rows_cleared(self, stack: List[List[int]]) -> int:
         self.stack = stack
-        rows_cleared = self.clear_rows_and_return_rows_cleared()
+        rows_cleared = self.clear_rows_and_return_rows_cleared(stack)
         self.spawn_piece()
         return rows_cleared
