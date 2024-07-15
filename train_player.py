@@ -10,16 +10,16 @@ import pstats
 import random
 import matplotlib.pyplot as plt
 
-NUM_EPISODES = 1
+NUM_EPISODES = 8192
 EPISODES_BETWEEN_SAVES = 4
-EPISODES_BETWEEN_PLOTS = 4
+EPISODES_BETWEEN_PLOTS = 9999999
 ARCHITECTURE = "linear_regression"
 player = Player(ARCHITECTURE)
 MODEL_LOAD_PATH = None # ARCHITECTURE + ".keras"
 MODEL_SAVE_PATH = None # ARCHITECTURE + ".keras"
 MEMORY_LOAD_PATH = None # "memory.pickle"
 MEMORY_SAVE_PATH = "memory_using_before_clearing.pickle"
-MEMORIZE_GAMES_PLAYED = False
+MEMORIZE_GAMES_PLAYED = True
 rows_cleared_memory: List[int] = []
 
 random.seed(42)
@@ -116,9 +116,6 @@ def main():
 
         states: List[List[List[int]]] = [copy.deepcopy(game.stack)]
 
-        # TODO remove
-        debug_iteration = 0
-
         while True:
             results_and_paths = calculate_results_and_paths(game.stack, game.current_piece)
             if results_and_paths == []:
@@ -126,22 +123,16 @@ def main():
                 break
 
             best_stack = player.choose_state([stack for stack, _ in results_and_paths])
-            states.append(best_stack)
+            states.append(copy.deepcopy(best_stack))
             rows_cleared = game.update_stack_and_return_rows_cleared(best_stack)
             total_rows_cleared += rows_cleared
 
-            # TODO remove
-            if debug_iteration % 100 == debug_iteration - 1:
-                print("Rows cleared:", total_rows_cleared)
-            debug_iteration += 1
-
-        for i in range(len(states) - 1):
-            if MEMORIZE_GAMES_PLAYED:
+        if MEMORIZE_GAMES_PLAYED:
+            for i in range(len(states) - 1):
                 player.memorize(states[i], states[i + 1])
         
         print("Rows cleared:", total_rows_cleared)
         rows_cleared_memory.append(total_rows_cleared)
-        # TODO remove iteration
         player.try_to_fit_on_memory()
         player.update_epsilon(episode_number)
 
@@ -173,7 +164,7 @@ def time_main():
     execution_time = end_time - start_time
     print("Execution time:", execution_time, "seconds")
 
-time_main()
+main()
 
 # with cProfile.Profile() as profile:
 #     main()

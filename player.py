@@ -14,8 +14,8 @@ class Player:
         self.NUM_FEATURES = 4
         self.REWARD_FOR_SURVIVING = 1
 
-        self.EPSILON_MAX = .5
-        self.EPSILON_MIN = .5
+        self.EPSILON_MAX = 0.2
+        self.EPSILON_MIN = 0.2
         self.EPSILON_DECAY_END_EPISODE = 1024
         self.epsilon = self.EPSILON_MAX
         
@@ -47,34 +47,39 @@ class Player:
             self.model = models.Sequential([
                 layers.Dense(1, input_dim=self.NUM_FEATURES, activation='linear', kernel_initializer=initializers.RandomNormal(stddev=0.01))
             ])
-            self.model.layers[0].set_weights([np.array([[0.01], [0.1], [-0.1], [-2]]), np.array([0])])
+            self.model.layers[0].set_weights([np.array([[-0.01], [0.1], [-0.1], [-2]]), np.array([0])])
         self.model.compile(optimizer='adam', loss='mean_squared_error')
 
     def memorize(self, state_before_clearing: List[List[int]], next_state_before_clearing: List[List[int]] | None) -> None:
         self.memory.append((state_before_clearing, next_state_before_clearing))
 
-    def get_height(self, stack: List[List[int]], x: int) -> int:
+    @staticmethod
+    def get_height(stack: List[List[int]], x: int) -> int:
         for y in range(Game.BOARD_HEIGHT_CELLS):
             if stack[y][x] == 1:
                 return Game.BOARD_HEIGHT_CELLS - y
         return 0
 
-    def get_max_height(self, stack_after_clearing: List[List[int]]) -> int:
-        return max([self.get_height(stack_after_clearing, x) for x in range(Game.BOARD_WIDTH_CELLS)])
+    @staticmethod
+    def get_max_height(stack_after_clearing: List[List[int]]) -> int:
+        return max([Player.get_height(stack_after_clearing, x) for x in range(Game.BOARD_WIDTH_CELLS)])
     
-    def get_full_rows(self, stack: List[List[int]]) -> int:
+    @staticmethod
+    def get_full_rows(stack: List[List[int]]) -> int:
         full_rows = 0
         for y in range(Game.BOARD_HEIGHT_CELLS):
             if all(cell == 1 for cell in stack[y]):
                 full_rows += 1
         return full_rows
-        
-    def get_bumpiness(self, stack: List[List[int]]) -> int:
-        heights = [self.get_height(stack, x) for x in range(Game.BOARD_WIDTH_CELLS)]
+
+    @staticmethod
+    def get_bumpiness(stack: List[List[int]]) -> int:
+        heights = [Player.get_height(stack, x) for x in range(Game.BOARD_WIDTH_CELLS)]
         return sum([(heights[i] - heights[i + 1]) ** 2 for i in range(Game.BOARD_WIDTH_CELLS - 1)])
-    
+
     # Returns the number of empty cells trapped underneath a filled cell
-    def get_holes(self, stack: List[List[int]]) -> int:
+    @staticmethod
+    def get_holes(stack: List[List[int]]) -> int:
         holes = 0
         for x in range(Game.BOARD_WIDTH_CELLS):
             filled_cell_found = False
@@ -89,8 +94,9 @@ class Player:
     # def get_features_of_stack_after_clearing(self, stack_after_clearing: List[List[int]]) -> Tuple[int, None, int, int]:
     #     return (self.get_max_height(stack_after_clearing), None, self.get_bumpiness(stack_after_clearing), self.get_holes(stack_after_clearing))
     
-    def get_features_of_stack_before_clearing(self, stack_before_clearing: List[List[int]]) -> Tuple[int, int, int, int]:
-        return (self.get_max_height(stack_before_clearing), self.get_full_rows(stack_before_clearing), self.get_bumpiness(stack_before_clearing), self.get_holes(stack_before_clearing))
+    @staticmethod
+    def get_features_of_stack_before_clearing(stack_before_clearing: List[List[int]]) -> Tuple[int, int, int, int]:
+        return (Player.get_max_height(stack_before_clearing), Player.get_full_rows(stack_before_clearing), Player.get_bumpiness(stack_before_clearing), Player.get_holes(stack_before_clearing))
 
     def get_best_state(self, states_before_clearing: List[List[List[int]]]) -> List[List[int]]:
         if self.architecture == "cnn":
@@ -159,8 +165,6 @@ class Player:
     
     def save_model(self, path: str) -> None:
         self.model.save(path)
-        # TODO remove
-        self.model = models.load_model(path)
     
     def load_model(self, path: str) -> None:
         self.model = models.load_model(path)
