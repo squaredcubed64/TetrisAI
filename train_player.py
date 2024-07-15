@@ -11,14 +11,14 @@ import random
 import matplotlib.pyplot as plt
 
 NUM_EPISODES = 8192
-EPISODES_BETWEEN_SAVES = 4
-EPISODES_BETWEEN_PLOTS = 9999999
+EPISODES_BETWEEN_SAVES = 16
+EPISODES_BETWEEN_PLOTS = 16
 ARCHITECTURE = "linear_regression"
 player = Player(ARCHITECTURE)
-MODEL_LOAD_PATH = None # ARCHITECTURE + ".keras"
+MODEL_LOAD_PATH = ARCHITECTURE + ".keras"
 MODEL_SAVE_PATH = ARCHITECTURE + ".keras"
-MEMORY_LOAD_PATH = "memory_using_before_clearing.pickle"
-MEMORY_SAVE_PATH = "memory_using_before_clearing.pickle"
+MEMORY_LOAD_PATH = "memory_original_weights_deque.pickle"
+MEMORY_SAVE_PATH = "memory.pickle"
 MEMORIZE_GAMES_PLAYED = True
 rows_cleared_memory: List[int] = []
 

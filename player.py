@@ -1,5 +1,5 @@
 import random
-from typing import List, Tuple
+from typing import Deque, List, Tuple
 from keras import layers, models, initializers
 import numpy as np
 from game import Game
@@ -7,8 +7,8 @@ import pickle
 
 class Player:
     def __init__(self, architecture: str) -> None:
-        self.BATCH_SIZE = 512
-        self.REPLAY_START = 2048
+        self.BATCH_SIZE = 4096
+        self.REPLAY_START = 4096
         self.DISCOUNT_FACTOR = .99
         self.NUM_EPOCHS = 8
         self.NUM_FEATURES = 4
@@ -23,7 +23,8 @@ class Player:
         self.architecture = architecture
 
         # List of (state (before clearing), next_state (before clearing)) tuples
-        self.memory: List[Tuple[List[List[int]], List[List[int]] | None]] = []
+        self.memory: Deque[Tuple[List[List[int]], List[List[int]] | None]] = []
+        self.MAX_MEMORY_SIZE = 100000
         # # List of (max_height, full_rows, bumpiness, holes) tuples
         # self.memory_dense: List[Tuple[int, int, int, int]] = []
 
@@ -48,12 +49,14 @@ class Player:
             self.model = models.Sequential([
                 layers.Dense(1, input_dim=self.NUM_FEATURES, activation='linear', kernel_initializer=initializers.RandomNormal(stddev=0.01))
             ])
-            self.model.layers[0].set_weights([np.array([[0], [0], [0], [0]]), np.array([40])])
+            # self.model.layers[0].set_weights([np.array([[0], [0], [0], [0]]), np.array([40])])
             # self.model.layers[0].set_weights([np.array([[-0.01], [0.1], [-0.1], [-2]]), np.array([0])])
         self.model.compile(optimizer='adam', loss='mean_squared_error')
 
     def memorize(self, state_before_clearing: List[List[int]], next_state_before_clearing: List[List[int]] | None) -> None:
         self.memory.append((state_before_clearing, next_state_before_clearing))
+        if len(self.memory) > self.REPLAY_START:
+            self.memory.popleft()
 
     @staticmethod
     def get_height(stack: List[List[int]], x: int) -> int:
@@ -120,9 +123,8 @@ class Player:
         if len(self.memory) < self.REPLAY_START:
             print("Not enough samples in memory to fit the model. Skipping training.")
             return
-        # TODO uncomment
-        # else:
-            # print("Fitting to memory")
+        else:
+            print("Fitting to memory")
 
         batch = random.sample(self.memory, self.BATCH_SIZE)
 
