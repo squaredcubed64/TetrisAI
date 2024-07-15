@@ -12,4 +12,4 @@ def inspect_weights(file_path: str, architecture: str) -> None:
     for layer in player.model.layers:
         print(layer.get_weights())
 
-inspect_weights("dense.keras", "dense")
+inspect_memory("memory_dense.pickle")

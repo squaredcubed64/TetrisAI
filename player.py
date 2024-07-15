@@ -7,24 +7,24 @@ import pickle
 
 class Player:
     def __init__(self, architecture: str) -> None:
-        self.BATCH_SIZE = 256
-        self.REPLAY_START = 4096
+        self.BATCH_SIZE = 512
+        self.REPLAY_START = 2048
         self.DISCOUNT_FACTOR = .99
-        self.NUM_EPOCHS = 500
+        self.NUM_EPOCHS = 8
         self.NUM_FEATURES = 4
         self.REWARD_FOR_SURVIVING = 1
-        self.REWARD_FOR_LOSING = -10
+        self.REWARD_FOR_LOSING = -1 / (1 - self.DISCOUNT_FACTOR)
 
-        self.EPSILON_MAX = .01
-        self.EPSILON_MIN = .01
-        self.EPSILON_DECAY_END_EPISODE = 1024
+        self.EPSILON_MAX = 0
+        self.EPSILON_MIN = 0
+        self.EPSILON_DECAY_END_EPISODE = 4096
         self.epsilon = self.EPSILON_MAX
         
         self.architecture = architecture
 
         # List of (state (before clearing), next_state (before clearing)) tuples
-        self.memory: Deque[Tuple[List[List[int]], List[List[int]] | None]] = []
-        self.MAX_MEMORY_SIZE = 100000
+        self.memory: Deque[Tuple[List[List[int]], List[List[int]] | None]] = Deque()
+        self.MAX_MEMORY_SIZE = 1000000
         # # List of (max_height, full_rows, bumpiness, holes) tuples
         # self.memory_dense: List[Tuple[int, int, int, int]] = []
 
@@ -55,7 +55,7 @@ class Player:
 
     def memorize(self, state_before_clearing: List[List[int]], next_state_before_clearing: List[List[int]] | None) -> None:
         self.memory.append((state_before_clearing, next_state_before_clearing))
-        if len(self.memory) > self.REPLAY_START:
+        while len(self.memory) > self.MAX_MEMORY_SIZE:
             self.memory.popleft()
 
     @staticmethod
@@ -105,7 +105,10 @@ class Player:
 
     def get_best_state(self, states_before_clearing: List[List[List[int]]]) -> List[List[int]]:
         if self.architecture == "cnn":
-            pass
+            states_before_clearing_array = np.reshape(states_before_clearing, (len(states_before_clearing), Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1))
+            predictions = self.model.predict(states_before_clearing_array, verbose=0)
+            scores = [prediction[0] for prediction in predictions]
+            return states_before_clearing[np.argmax(scores)]
         elif self.architecture == "dense" or self.architecture == "linear_regression":
             features_of_stacks = [self.get_features_of_stack_before_clearing(state) for state in states_before_clearing]
             # TODO change next line to use np.array
@@ -123,15 +126,13 @@ class Player:
         if len(self.memory) < self.REPLAY_START:
             print("Not enough samples in memory to fit the model. Skipping training.")
             return
-        else:
-            print("Fitting to memory")
 
         batch = random.sample(self.memory, self.BATCH_SIZE)
 
         batch_without_terminal_transitions = list(filter(lambda transition : transition[1] is not None, batch))
 
         if self.architecture == "cnn":
-            nonterminal_next_states = np.reshape([next_state for _, next_state, _  in batch_without_terminal_transitions],
+            nonterminal_next_states = np.reshape([next_state for _, next_state in batch_without_terminal_transitions],
                                                  (len(batch_without_terminal_transitions), Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1))
         elif self.architecture == "dense" or self.architecture == "linear_regression":
             nonterminal_next_states = np.array([self.get_features_of_stack_before_clearing(next_state) for current_state, next_state in batch_without_terminal_transitions])

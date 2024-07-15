@@ -13,12 +13,13 @@ import matplotlib.pyplot as plt
 NUM_EPISODES = 8192
 EPISODES_BETWEEN_SAVES = 16
 EPISODES_BETWEEN_PLOTS = 16
+TRAINS_PER_EPISODE = 4
 ARCHITECTURE = "dense"
 player = Player(ARCHITECTURE)
-MODEL_LOAD_PATH = ARCHITECTURE + ".keras"
+MODEL_LOAD_PATH = None # ARCHITECTURE + ".keras"
 MODEL_SAVE_PATH = ARCHITECTURE + ".keras"
-MEMORY_LOAD_PATH = "memory_dense.pickle"
-MEMORY_SAVE_PATH = "memory_dense.pickle"
+MEMORY_LOAD_PATH = "memory_original_weights_deque.pickle"
+MEMORY_SAVE_PATH = "memory_dense_new.pickle"
 MEMORIZE_GAMES_PLAYED = True
 rows_cleared_memory: List[int] = []
 
@@ -133,7 +134,10 @@ def main():
         
         print("Rows cleared:", total_rows_cleared)
         rows_cleared_memory.append(total_rows_cleared)
-        player.try_to_fit_on_memory()
+
+        print("Fitting on memory")
+        for _ in range(TRAINS_PER_EPISODE):
+            player.try_to_fit_on_memory()
         player.update_epsilon(episode_number)
 
         if ARCHITECTURE == "linear_regression":
