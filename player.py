@@ -8,14 +8,15 @@ import pickle
 class Player:
     def __init__(self, architecture: str) -> None:
         self.BATCH_SIZE = 512
-        self.REPLAY_START = 9999999
-        self.DISCOUNT_FACTOR = 1
-        self.NUM_EPOCHS = 1
+        self.REPLAY_START = 2048
+        self.DISCOUNT_FACTOR = .99
+        self.NUM_EPOCHS = 8
         self.NUM_FEATURES = 4
         self.REWARD_FOR_SURVIVING = 1
+        self.REWARD_FOR_LOSING = -10
 
-        self.EPSILON_MAX = 0.2
-        self.EPSILON_MIN = 0.2
+        self.EPSILON_MAX = .01
+        self.EPSILON_MIN = .01
         self.EPSILON_DECAY_END_EPISODE = 1024
         self.epsilon = self.EPSILON_MAX
         
@@ -47,7 +48,8 @@ class Player:
             self.model = models.Sequential([
                 layers.Dense(1, input_dim=self.NUM_FEATURES, activation='linear', kernel_initializer=initializers.RandomNormal(stddev=0.01))
             ])
-            self.model.layers[0].set_weights([np.array([[-0.01], [0.1], [-0.1], [-2]]), np.array([0])])
+            self.model.layers[0].set_weights([np.array([[0], [0], [0], [0]]), np.array([40])])
+            # self.model.layers[0].set_weights([np.array([[-0.01], [0.1], [-0.1], [-2]]), np.array([0])])
         self.model.compile(optimizer='adam', loss='mean_squared_error')
 
     def memorize(self, state_before_clearing: List[List[int]], next_state_before_clearing: List[List[int]] | None) -> None:
@@ -130,14 +132,14 @@ class Player:
             nonterminal_next_states = np.reshape([next_state for _, next_state, _  in batch_without_terminal_transitions],
                                                  (len(batch_without_terminal_transitions), Game.BOARD_HEIGHT_CELLS, Game.BOARD_WIDTH_CELLS, 1))
         elif self.architecture == "dense" or self.architecture == "linear_regression":
-            nonterminal_next_states = np.array([self.get_features_of_stack_before_clearing(next_state) for next_state in batch_without_terminal_transitions])
+            nonterminal_next_states = np.array([self.get_features_of_stack_before_clearing(next_state) for current_state, next_state in batch_without_terminal_transitions])
         nonterminal_next_q_values = np.array([s[0] for s in self.model.predict(nonterminal_next_states, verbose=0)])
     
         next_q_values = []
         nonterminal_index = 0
         for step_number in range(self.BATCH_SIZE):
             if batch[step_number][1] is None:
-                next_q_values.append(0)
+                next_q_values.append(self.REWARD_FOR_LOSING)
             else:
                 next_q_values.append(nonterminal_next_q_values[nonterminal_index])
                 nonterminal_index += 1
