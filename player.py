@@ -7,10 +7,10 @@ import pickle
 
 class Player:
     def __init__(self, architecture: str) -> None:
-        self.BATCH_SIZE = 4096
+        self.BATCH_SIZE = 256
         self.REPLAY_START = 4096
         self.DISCOUNT_FACTOR = .99
-        self.NUM_EPOCHS = 8
+        self.NUM_EPOCHS = 500
         self.NUM_FEATURES = 4
         self.REWARD_FOR_SURVIVING = 1
         self.REWARD_FOR_LOSING = -10

@@ -13,12 +13,12 @@ import matplotlib.pyplot as plt
 NUM_EPISODES = 8192
 EPISODES_BETWEEN_SAVES = 16
 EPISODES_BETWEEN_PLOTS = 16
-ARCHITECTURE = "linear_regression"
+ARCHITECTURE = "dense"
 player = Player(ARCHITECTURE)
 MODEL_LOAD_PATH = ARCHITECTURE + ".keras"
 MODEL_SAVE_PATH = ARCHITECTURE + ".keras"
-MEMORY_LOAD_PATH = "memory_original_weights_deque.pickle"
-MEMORY_SAVE_PATH = "memory.pickle"
+MEMORY_LOAD_PATH = "memory_dense.pickle"
+MEMORY_SAVE_PATH = "memory_dense.pickle"
 MEMORIZE_GAMES_PLAYED = True
 rows_cleared_memory: List[int] = []
 
@@ -121,7 +121,7 @@ def main():
             if results_and_paths == []:
                 states.append(None)
                 break
-
+            
             best_stack = player.choose_state([stack for stack, _ in results_and_paths])
             states.append(copy.deepcopy(best_stack))
             rows_cleared = game.update_stack_and_return_rows_cleared(best_stack)
