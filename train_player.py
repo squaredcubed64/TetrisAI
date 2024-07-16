@@ -8,12 +8,15 @@ from piece import Piece
 import cProfile
 import pstats
 import random
+import numpy as np
+from scipy import stats
 import matplotlib.pyplot as plt
 
-NUM_EPISODES = 8192
-EPISODES_BETWEEN_SAVES = 16
-EPISODES_BETWEEN_PLOTS = 16
-TRAINS_PER_EPISODE = 4
+NUM_EPISODES = 10000
+EPISODES_BETWEEN_SAVES = 10
+EPISODES_BETWEEN_PLOTS = 25
+TRAINS_AT_START = 1000
+TRAINS_PER_EPISODE = 5
 ARCHITECTURE = "dense"
 player = Player(ARCHITECTURE)
 MODEL_LOAD_PATH = None # ARCHITECTURE + ".keras"
@@ -102,6 +105,10 @@ def calculate_results_and_paths(initial_stack: List[List[int]], initial_piece: P
 
     return results_and_paths
 
+def print_confidence_interval(data: List[int]) -> None:
+    confidence_interval = stats.t.interval(0.95, len(data)-1, loc=np.mean(data), scale=stats.sem(data))
+    print("95% Confidence Interval for Rows Cleared:", confidence_interval)
+
 def main():
     if MODEL_LOAD_PATH is not None:
         print("Loading model from", MODEL_LOAD_PATH)
@@ -109,6 +116,18 @@ def main():
     if MEMORY_LOAD_PATH is not None:
         print("Loading memory from", MEMORY_LOAD_PATH)
         player.load_memory(MEMORY_LOAD_PATH)
+
+    start_time = time.time()
+    if TRAINS_AT_START > 0:
+        print("Fitting on loaded memory", TRAINS_AT_START, "times")
+    for i in range(TRAINS_AT_START):
+        player.try_to_fit_on_memory()
+        print(i, end=" ", flush=True)
+        if i % 5 == 4:
+            player.save_model(MODEL_SAVE_PATH)
+    end_time = time.time()
+    training_time = end_time - start_time
+    print("Initial training time:", training_time, "seconds")
 
     for episode_number in range(NUM_EPISODES):
         game = Game()
@@ -132,10 +151,11 @@ def main():
             for i in range(len(states) - 1):
                 player.memorize(states[i], states[i + 1])
         
-        print("Rows cleared:", total_rows_cleared)
+        print("\tRows cleared:", total_rows_cleared)
         rows_cleared_memory.append(total_rows_cleared)
 
-        print("Fitting on memory")
+        if TRAINS_PER_EPISODE > 0:
+            print("Fitting on memory")
         for _ in range(TRAINS_PER_EPISODE):
             player.try_to_fit_on_memory()
         player.update_epsilon(episode_number)
@@ -159,7 +179,9 @@ def main():
             plt.ylim(0, max(rows_cleared_memory))
             plt.show(block=False)
             plt.pause(0.1)
-
+        
+        print_confidence_interval(rows_cleared_memory)
+    
 def time_main():
     start_time = time.time()
     main()
@@ -168,7 +190,7 @@ def time_main():
     execution_time = end_time - start_time
     print("Execution time:", execution_time, "seconds")
 
-main()
+time_main()
 
 # with cProfile.Profile() as profile:
 #     main()

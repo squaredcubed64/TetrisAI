@@ -7,24 +7,24 @@ import pickle
 
 class Player:
     def __init__(self, architecture: str) -> None:
-        self.BATCH_SIZE = 512
-        self.REPLAY_START = 2048
-        self.DISCOUNT_FACTOR = .99
-        self.NUM_EPOCHS = 8
+        self.BATCH_SIZE = 16384
+        self.REPLAY_START = 2000
+        self.DISCOUNT_FACTOR = .999
+        self.NUM_EPOCHS = 1
         self.NUM_FEATURES = 4
         self.REWARD_FOR_SURVIVING = 1
-        self.REWARD_FOR_LOSING = -1 / (1 - self.DISCOUNT_FACTOR)
+        self.REWARD_FOR_LOSING = -self.REWARD_FOR_SURVIVING / (1 - self.DISCOUNT_FACTOR)
 
         self.EPSILON_MAX = 0
         self.EPSILON_MIN = 0
-        self.EPSILON_DECAY_END_EPISODE = 4096
+        self.EPSILON_DECAY_END_EPISODE = 1000
         self.epsilon = self.EPSILON_MAX
         
         self.architecture = architecture
 
         # List of (state (before clearing), next_state (before clearing)) tuples
         self.memory: Deque[Tuple[List[List[int]], List[List[int]] | None]] = Deque()
-        self.MAX_MEMORY_SIZE = 1000000
+        self.MAX_MEMORY_SIZE = 30000
         # # List of (max_height, full_rows, bumpiness, holes) tuples
         # self.memory_dense: List[Tuple[int, int, int, int]] = []
 
@@ -41,8 +41,9 @@ class Player:
             ])
         elif architecture == "dense":
             self.model = models.Sequential([
-                layers.Dense(64, input_dim=self.NUM_FEATURES, activation='relu'),
-                layers.Dense(64, activation='relu'),
+                layers.Dense(512, input_dim=self.NUM_FEATURES, activation='relu'),
+                layers.Dense(512, activation='relu'),
+                layers.Dense(512, input_dim=self.NUM_FEATURES, activation='relu'),
                 layers.Dense(1, activation='linear')
             ])
         elif architecture == "linear_regression":
@@ -181,3 +182,5 @@ class Player:
     def load_memory(self, path: str) -> None:
         with open(path, 'rb') as f:
             self.memory = pickle.load(f)
+        while len(self.memory) > self.MAX_MEMORY_SIZE:
+            self.memory.popleft()
